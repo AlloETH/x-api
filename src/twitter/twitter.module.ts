@@ -1,9 +1,14 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfig } from '../config/configuration';
+import { SmartFollowerEntity } from './entities/smart-follower.entity';
+import { TweetEntity } from './entities/tweet.entity';
+import { UserSnapshotEntity } from './entities/user-snapshot.entity';
 import { TwitterController } from './twitter.controller';
 import { TwitterService } from './twitter.service';
+import { TwitterStorageService } from './twitter-storage.service';
 
 @Module({
   imports: [
@@ -22,9 +27,14 @@ import { TwitterService } from './twitter.service';
         };
       },
     }),
+    TypeOrmModule.forFeature([
+      UserSnapshotEntity,
+      TweetEntity,
+      SmartFollowerEntity,
+    ]),
   ],
   controllers: [TwitterController],
-  providers: [TwitterService],
+  providers: [TwitterService, TwitterStorageService],
   exports: [TwitterService],
 })
 export class TwitterModule {}

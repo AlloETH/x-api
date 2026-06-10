@@ -7,6 +7,7 @@ import { validationSchema } from './config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { DatabaseModule } from './database/database.module';
 import { TwitterModule } from './twitter/twitter.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { TwitterModule } from './twitter/twitter.module';
         };
       },
     }),
+    DatabaseModule,
     TwitterModule,
   ],
   controllers: [AppController],

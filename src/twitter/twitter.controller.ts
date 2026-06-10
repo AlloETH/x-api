@@ -117,6 +117,53 @@ export class TwitterController {
   }
 
   // ---------------------------------------------------------------------
+  // Derived features (computed locally - see README)
+  // ---------------------------------------------------------------------
+
+  @Get('v3/user/smart-followers')
+  @ApiOperation({
+    summary:
+      "Get a user's 'smart' followers - followers ranked by reach and verification",
+  })
+  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max number of smart followers to return (default 25)',
+  })
+  @ApiQuery({ name: 'cursor', required: false })
+  getSmartFollowers(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getSmartFollowers(query);
+  }
+
+  @Get('v3/user/paid-partnership-tweets')
+  @ApiOperation({
+    summary:
+      "Get a user's tweets flagged as paid partnership / branded content",
+  })
+  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getPaidPartnershipTweets(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getPaidPartnershipTweets(query);
+  }
+
+  @Get('v3/user/stats')
+  @ApiOperation({
+    summary:
+      'Get computed stats for a user (influence score, follower growth since last fetch)',
+  })
+  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
+  getUserStats(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getUserStats(query);
+  }
+
+  // ---------------------------------------------------------------------
   // Tweets
   // ---------------------------------------------------------------------
 

@@ -14,6 +14,9 @@ describe('TwitterController', () => {
       getTweetDetails: jest.fn(),
       search: jest.fn(),
       getSpaceById: jest.fn(),
+      getSmartFollowers: jest.fn(),
+      getPaidPartnershipTweets: jest.fn(),
+      getUserStats: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -77,5 +80,36 @@ describe('TwitterController', () => {
     await controller.getSpaceById({ id: 'abc' });
 
     expect(service.getSpaceById).toHaveBeenCalledWith({ id: 'abc' });
+  });
+
+  it('delegates getSmartFollowers to the service with the raw query', async () => {
+    service.getSmartFollowers.mockResolvedValue({ smartFollowers: [] });
+
+    await controller.getSmartFollowers({ username: 'elonmusk', limit: '10' });
+
+    expect(service.getSmartFollowers).toHaveBeenCalledWith({
+      username: 'elonmusk',
+      limit: '10',
+    });
+  });
+
+  it('delegates getPaidPartnershipTweets to the service with the raw query', async () => {
+    service.getPaidPartnershipTweets.mockResolvedValue({ tweets: [] });
+
+    await controller.getPaidPartnershipTweets({ username: 'elonmusk' });
+
+    expect(service.getPaidPartnershipTweets).toHaveBeenCalledWith({
+      username: 'elonmusk',
+    });
+  });
+
+  it('delegates getUserStats to the service with the raw query', async () => {
+    service.getUserStats.mockResolvedValue({ influenceScore: 100 });
+
+    await controller.getUserStats({ username: 'elonmusk' });
+
+    expect(service.getUserStats).toHaveBeenCalledWith({
+      username: 'elonmusk',
+    });
   });
 });

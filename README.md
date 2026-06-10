@@ -39,8 +39,19 @@ changes needed if a guessed name is wrong.
   (`RapidApiExceptionFilter`).
 - Built-in rate limiting (`@nestjs/throttler`) to help stay within your
   RapidAPI plan's quota.
+- **Persistence**: user profiles and tweets fetched through the API are
+  stored in a local SQLite database via TypeORM (see
+  [Database & persistence](#database--persistence)).
+- **Derived analytics endpoints** (computed locally, inspired by
+  [app.sorsa.io](https://app.sorsa.io)):
+  - `GET /twitter/v3/user/smart-followers` - a user's followers ranked by
+    reach + verification.
+  - `GET /twitter/v3/user/paid-partnership-tweets` - a user's tweets flagged
+    as paid partnership / branded content.
+  - `GET /twitter/v3/user/stats` - influence score and follower growth since
+    the last fetch.
 - OpenAPI/Swagger docs served at `/docs`.
-- Unit tests for the service and controller layers.
+- Unit tests for the service, storage and controller layers.
 
 ## Getting started
 
@@ -67,6 +78,7 @@ cp .env.example .env
 | `RAPIDAPI_TIMEOUT`    | Upstream request timeout (ms)                              | `10000`                                |
 | `THROTTLE_TTL`        | Rate limit window (ms)                                     | `60000`                                |
 | `THROTTLE_LIMIT`      | Max requests per window                                    | `60`                                   |
+| `DATABASE_PATH`       | SQLite file path used to persist fetched data (`:memory:` for ephemeral) | `data/db.sqlite`         |
 
 ### 3. Run the app
 
@@ -110,6 +122,19 @@ GET https://twitter-api47.p.rapidapi.com/v3/user/by-username?username=elonmusk
 | GET    | `/twitter/v3/user/followers-ids`            | `username`, `cursor`            | Get the numeric IDs of a user's followers      |
 | GET    | `/twitter/v3/user/following`                | `username`, `cursor`            | Get the accounts a user follows                |
 | GET    | `/twitter/v3/user/following-ids`            | `username`, `cursor`            | Get the numeric IDs of accounts a user follows |
+
+### Derived analytics (computed locally)
+
+These routes are **not** 1:1 upstream proxies - they fetch the underlying
+upstream data, derive a result locally, and persist it. See
+[Smart followers, paid partnerships & stats](#smart-followers-paid-partnerships--stats)
+for how each one is computed.
+
+| Method | Path                                     | Params                          | Description                                          |
+| ------ | ------------------------------------------ | ----------------------------- | ----------------------------------------------------- |
+| GET    | `/twitter/v3/user/smart-followers`          | `username` *(required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
+| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` *(required)*, `cursor` | A user's tweets flagged as paid partnership / branded content |
+| GET    | `/twitter/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
 
 ### Tweets
 
@@ -168,20 +193,73 @@ as query params to the matching upstream endpoint
   `twitter-endpoints.constant.ts`, add a method to `TwitterService`, and a
   route to `TwitterController`.
 
+## Database & persistence
+
+The app uses [TypeORM](https://typeorm.io) with a SQLite database
+(`better-sqlite3` driver) to persist data fetched from the upstream API,
+configured via `DATABASE_PATH` (defaults to `data/db.sqlite`, created
+automatically; `synchronize: true` auto-creates the schema, which is fine at
+this scale - swap to migrations if you outgrow it). Persistence is
+best-effort: a database error is logged but never breaks the proxied API
+response.
+
+| Table             | Populated by                                                          | Contents                                                |
+| ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `user_snapshots`    | `user/by-username`, `user/by-id`, `user/by-ids`, `user/stats`             | One row per fetch (id, username, follower/following/tweet counts, verified, raw JSON, timestamp) - enables follower-growth tracking over time |
+| `tweets`            | `user/tweets`, `user/tweets-and-replies`, `user/paid-partnership-tweets`  | One row per tweet, upserted by ID (author, text, `isPaidPartnership` flag, raw JSON) |
+| `smart_followers`   | `user/smart-followers`                                                    | The latest ranked "smart followers" per target account (upserted by target + follower username) |
+
+## Smart followers, paid partnerships & stats
+
+The upstream Twitter API47 has **no endpoints** for "smart followers",
+"paid partnership" posts, or influence scoring (inspired by
+[app.sorsa.io](https://app.sorsa.io)'s profile dashboard). These are computed
+locally on top of the existing `/v3/user/followers` and `/v3/user/tweets`
+responses by `src/twitter/utils/twitter-data.util.ts`:
+
+- **Smart followers** (`/v3/user/smart-followers`): every follower returned
+  by `/v3/user/followers` is scored via `smartFollowerScore` - follower count
+  plus a large bonus if the account is verified - then sorted descending and
+  truncated to `limit` (default 25).
+- **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): every
+  tweet returned by `/v3/user/tweets` is checked by `isPaidPartnershipTweet`,
+  which scans the raw tweet JSON for disclosure-related keywords (`paid
+  partnership`, `branded content`, `promoted tweet`, `advertiser`,
+  `sponsorship`).
+- **Stats** (`/v3/user/stats`): re-fetches the user's profile, computes an
+  `influenceScore` (log-scaled reach + follower/following ratio + a
+  verification bonus) via `computeInfluenceScore`, and diffs the new
+  follower count against the most recent `user_snapshots` row to return
+  `followerGrowth`.
+
+Because the upstream response shape couldn't be confirmed against a live,
+non-quota-exhausted key, both the user/tweet extraction (`isUserLike` /
+`isTweetLike`) and the paid-partnership keyword list are **best-effort
+heuristics** that recursively scan the response for objects that look like a
+user/tweet. If real responses don't match (e.g. paid-partnership tweets use a
+different field than the keyword scan expects), adjust
+`src/twitter/utils/twitter-data.util.ts` - the rest of the pipeline (storage,
+controllers) is unaffected.
+
 ## Project structure
 
 ```
 src/
-├── app.module.ts            # Root module (config, throttling, Twitter module)
+├── app.module.ts            # Root module (config, throttling, DB, Twitter module)
 ├── main.ts                  # Bootstrap, global pipes/filters, Swagger
 ├── config/                   # Environment configuration & validation
+├── database/
+│   └── database.module.ts    # TypeORM (SQLite) setup
 ├── common/
 │   ├── filters/               # Upstream error -> HTTP exception translation
 │   └── interceptors/          # Request logging
 └── twitter/
-    ├── twitter.module.ts      # HttpModule config (RapidAPI base URL/headers)
-    ├── twitter.controller.ts  # REST endpoints (1:1 proxy to upstream /v3/...)
-    ├── twitter.service.ts     # Upstream API calls
+    ├── twitter.module.ts      # HttpModule + TypeORM feature config
+    ├── twitter.controller.ts  # REST endpoints (1:1 proxy + derived analytics)
+    ├── twitter.service.ts     # Upstream API calls + persistence
+    ├── twitter-storage.service.ts  # Persists user/tweet/follower data
     ├── constants/              # Upstream endpoint path map
+    ├── entities/               # TypeORM entities (user_snapshots, tweets, smart_followers)
+    ├── utils/                  # Extraction & scoring heuristics
     └── interfaces/             # Response typings
 ```

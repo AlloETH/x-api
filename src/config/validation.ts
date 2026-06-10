@@ -10,4 +10,5 @@ export const validationSchema = Joi.object({
   RAPIDAPI_TIMEOUT: Joi.number().default(10000),
   THROTTLE_TTL: Joi.number().default(60000),
   THROTTLE_LIMIT: Joi.number().default(60),
+  DATABASE_PATH: Joi.string().default('data/db.sqlite'),
 });

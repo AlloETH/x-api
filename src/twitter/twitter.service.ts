@@ -3,6 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 import { TWITTER_ENDPOINTS } from './constants/twitter-endpoints.constant';
 import { TwitterApiResponse } from './interfaces/twitter-api-response.interface';
+import { TwitterStorageService } from './twitter-storage.service';
+import {
+  computeInfluenceScore,
+  extractTweets,
+  extractUsers,
+  isPaidPartnershipTweet,
+  smartFollowerScore,
+} from './utils/twitter-data.util';
 
 export type TwitterQuery = Record<
   string,
@@ -15,40 +23,65 @@ export type TwitterQuery = Record<
  * Every method forwards the given query params verbatim to the matching
  * upstream endpoint (see `twitter-endpoints.constant.ts`), so any parameter
  * accepted by the upstream API can be passed through unchanged.
+ *
+ * User profiles and tweets fetched via this service are also persisted to
+ * the local database (see `TwitterStorageService`) so they can be analyzed
+ * later (follower growth, smart followers, paid partnership tweets, etc.).
  */
 @Injectable()
 export class TwitterService {
   private readonly logger = new Logger(TwitterService.name);
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly storage: TwitterStorageService,
+  ) {}
 
   // ---------------------------------------------------------------------
   // Users
   // ---------------------------------------------------------------------
 
   /** GET /v3/user/by-username - get a user's profile by @username. */
-  getUserByUsername(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_BY_USERNAME, query);
+  async getUserByUsername(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const response = await this.proxy(
+      TWITTER_ENDPOINTS.USER_BY_USERNAME,
+      query,
+    );
+    await this.storage.saveUserSnapshots(response);
+    return response;
   }
 
   /** GET /v3/user/by-id - get a user's profile by numeric user ID. */
-  getUserById(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_BY_ID, query);
+  async getUserById(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const response = await this.proxy(TWITTER_ENDPOINTS.USER_BY_ID, query);
+    await this.storage.saveUserSnapshots(response);
+    return response;
   }
 
   /** GET /v3/user/by-ids - batch lookup of user profiles by ID. */
-  getUsersByIds(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USERS_BY_IDS, query);
+  async getUsersByIds(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const response = await this.proxy(TWITTER_ENDPOINTS.USERS_BY_IDS, query);
+    await this.storage.saveUserSnapshots(response);
+    return response;
   }
 
   /** GET /v3/user/tweets - get a user's tweets. */
-  getUserTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
+  async getUserTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
+    await this.storage.saveTweets(response);
+    return response;
   }
 
   /** GET /v3/user/tweets-and-replies - get a user's tweets and replies. */
-  getUserTweetsAndReplies(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_TWEETS_AND_REPLIES, query);
+  async getUserTweetsAndReplies(
+    query: TwitterQuery,
+  ): Promise<TwitterApiResponse> {
+    const response = await this.proxy(
+      TWITTER_ENDPOINTS.USER_TWEETS_AND_REPLIES,
+      query,
+    );
+    await this.storage.saveTweets(response);
+    return response;
   }
 
   /** GET /v3/user/followers - get a user's followers. */
@@ -154,6 +187,120 @@ export class TwitterService {
   /** GET /v3/space/by-id - get details about a Space. */
   getSpaceById(query: TwitterQuery): Promise<TwitterApiResponse> {
     return this.proxy(TWITTER_ENDPOINTS.SPACE_BY_ID, query);
+  }
+
+  // ---------------------------------------------------------------------
+  // Derived features (not 1:1 upstream endpoints - see README)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Fetches a user's followers (`/v3/user/followers`) and ranks them by
+   * `smartFollowerScore` (reach + a verification bonus), returning the
+   * top `limit` (default 25). The ranking is also persisted so it can be
+   * tracked over time.
+   */
+  async getSmartFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const username =
+      query.username !== undefined ? String(query.username) : undefined;
+    const limit = query.limit !== undefined ? Number(query.limit) : 25;
+
+    const upstreamQuery: TwitterQuery = { ...query };
+    delete upstreamQuery.limit;
+
+    const response = await this.proxy(
+      TWITTER_ENDPOINTS.USER_FOLLOWERS,
+      upstreamQuery,
+    );
+    const followers = extractUsers(response);
+
+    const ranked = followers
+      .map((follower) => ({
+        ...follower,
+        score: smartFollowerScore(follower),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    if (username) {
+      await this.storage.saveSmartFollowers(username, ranked);
+    }
+
+    return {
+      username,
+      count: ranked.length,
+      smartFollowers: ranked.map((follower) => ({
+        id: follower.id,
+        username: follower.username,
+        followersCount: follower.followersCount,
+        followingCount: follower.followingCount,
+        tweetsCount: follower.tweetsCount,
+        verified: follower.verified,
+        score: follower.score,
+      })),
+    };
+  }
+
+  /**
+   * Fetches a user's tweets (`/v3/user/tweets`) and returns only the ones
+   * flagged as paid partnership / branded content (see
+   * `isPaidPartnershipTweet`). All fetched tweets are persisted, with the
+   * paid-partnership flag stored alongside each one.
+   */
+  async getPaidPartnershipTweets(
+    query: TwitterQuery,
+  ): Promise<TwitterApiResponse> {
+    const username =
+      query.username !== undefined ? String(query.username) : undefined;
+
+    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
+    await this.storage.saveTweets(response);
+
+    const tweets = extractTweets(response).filter(isPaidPartnershipTweet);
+
+    return {
+      username,
+      count: tweets.length,
+      tweets: tweets.map((tweet) => ({
+        id: tweet.id,
+        authorId: tweet.authorId,
+        authorUsername: tweet.authorUsername,
+        text: tweet.text,
+      })),
+    };
+  }
+
+  /**
+   * Fetches a user's profile (`/v3/user/by-username`) and returns derived
+   * stats: an "influence score" (see `computeInfluenceScore`) and follower
+   * growth since the last time this user was fetched.
+   */
+  async getUserStats(query: TwitterQuery): Promise<TwitterApiResponse> {
+    const response = await this.proxy(
+      TWITTER_ENDPOINTS.USER_BY_USERNAME,
+      query,
+    );
+    const [user] = extractUsers(response);
+
+    if (!user) {
+      return response;
+    }
+
+    const previous = await this.storage.getLatestSnapshot(user.username);
+    await this.storage.saveUserSnapshots(response);
+
+    return {
+      id: user.id,
+      username: user.username,
+      followersCount: user.followersCount,
+      followingCount: user.followingCount,
+      tweetsCount: user.tweetsCount,
+      verified: user.verified,
+      influenceScore: computeInfluenceScore(user),
+      followerGrowth: previous
+        ? user.followersCount - previous.followersCount
+        : null,
+      previousFetchedAt: previous?.fetchedAt ?? null,
+    };
   }
 
   // ---------------------------------------------------------------------

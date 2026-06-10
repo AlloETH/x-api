@@ -10,6 +10,9 @@ export interface AppConfig {
     ttl: number;
     limit: number;
   };
+  database: {
+    path: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -24,5 +27,8 @@ export default (): AppConfig => ({
   throttle: {
     ttl: parseInt(process.env.THROTTLE_TTL ?? '60000', 10),
     limit: parseInt(process.env.THROTTLE_LIMIT ?? '60', 10),
+  },
+  database: {
+    path: process.env.DATABASE_PATH ?? 'data/db.sqlite',
   },
 });
