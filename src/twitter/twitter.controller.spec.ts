@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TwitterController } from './twitter.controller';
 import { TwitterService } from './twitter.service';
-import { TwitterSearchType } from './dto/search-query.dto';
 
 describe('TwitterController', () => {
   let controller: TwitterController;
@@ -10,11 +9,11 @@ describe('TwitterController', () => {
   beforeEach(async () => {
     const serviceMock: Partial<jest.Mocked<TwitterService>> = {
       getUserByUsername: jest.fn(),
+      getUserById: jest.fn(),
       getUserTweets: jest.fn(),
-      getTweetDetail: jest.fn(),
+      getTweetDetails: jest.fn(),
       search: jest.fn(),
-      getTrends: jest.fn(),
-      checkRetweet: jest.fn(),
+      getSpaceById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -26,56 +25,57 @@ describe('TwitterController', () => {
     service = module.get(TwitterService);
   });
 
-  it('delegates getUserByUsername to the service', async () => {
+  it('delegates getUserByUsername to the service with the raw query', async () => {
     service.getUserByUsername.mockResolvedValue({ id: '1' });
 
-    const result = await controller.getUserByUsername('elonmusk');
+    const result = await controller.getUserByUsername({ username: 'elonmusk' });
 
-    expect(service.getUserByUsername).toHaveBeenCalledWith('elonmusk');
+    expect(service.getUserByUsername).toHaveBeenCalledWith({
+      username: 'elonmusk',
+    });
     expect(result).toEqual({ id: '1' });
   });
 
-  it('delegates getUserTweets with the cursor query param', async () => {
+  it('delegates getUserById to the service with the raw query', async () => {
+    service.getUserById.mockResolvedValue({ id: '44196397' });
+
+    await controller.getUserById({ id: '44196397' });
+
+    expect(service.getUserById).toHaveBeenCalledWith({ id: '44196397' });
+  });
+
+  it('delegates getUserTweets to the service with the raw query', async () => {
     service.getUserTweets.mockResolvedValue({ tweets: [] });
 
-    await controller.getUserTweets('elonmusk', { cursor: 'abc' });
+    await controller.getUserTweets({ username: 'elonmusk', cursor: 'abc' });
 
-    expect(service.getUserTweets).toHaveBeenCalledWith('elonmusk', 'abc');
+    expect(service.getUserTweets).toHaveBeenCalledWith({
+      username: 'elonmusk',
+      cursor: 'abc',
+    });
   });
 
-  it('delegates getTweetDetail to the service', async () => {
-    service.getTweetDetail.mockResolvedValue({ id: '999' });
+  it('delegates getTweetDetails to the service with the raw query', async () => {
+    service.getTweetDetails.mockResolvedValue({ id: '999' });
 
-    await controller.getTweetDetail('999', {});
+    await controller.getTweetDetails({ id: '999' });
 
-    expect(service.getTweetDetail).toHaveBeenCalledWith('999', undefined);
+    expect(service.getTweetDetails).toHaveBeenCalledWith({ id: '999' });
   });
 
-  it('delegates search with a default search type of Top', async () => {
+  it('delegates search to the service with the raw query', async () => {
     service.search.mockResolvedValue({ results: [] });
 
     await controller.search({ query: 'nestjs' });
 
-    expect(service.search).toHaveBeenCalledWith(
-      'nestjs',
-      TwitterSearchType.TOP,
-      undefined,
-    );
+    expect(service.search).toHaveBeenCalledWith({ query: 'nestjs' });
   });
 
-  it('delegates checkRetweet with the tweet id and user id', async () => {
-    service.checkRetweet.mockResolvedValue({ retweeted: false });
+  it('delegates getSpaceById to the service with the raw query', async () => {
+    service.getSpaceById.mockResolvedValue({ id: 'abc' });
 
-    await controller.checkRetweet('999', { userId: '123' });
+    await controller.getSpaceById({ id: 'abc' });
 
-    expect(service.checkRetweet).toHaveBeenCalledWith('999', '123');
-  });
-
-  it('delegates getTrends with the woeid query param', async () => {
-    service.getTrends.mockResolvedValue({ trends: [] });
-
-    await controller.getTrends({ woeid: '1' });
-
-    expect(service.getTrends).toHaveBeenCalledWith('1');
+    expect(service.getSpaceById).toHaveBeenCalledWith({ id: 'abc' });
   });
 });

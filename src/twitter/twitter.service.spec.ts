@@ -4,7 +4,6 @@ import { of } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { TwitterService } from './twitter.service';
 import { TWITTER_ENDPOINTS } from './constants/twitter-endpoints.constant';
-import { TwitterSearchType } from './dto/search-query.dto';
 
 const mockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
   data,
@@ -33,139 +32,116 @@ describe('TwitterService', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it('getUserByUsername calls the screenname endpoint', async () => {
+  it('getUserByUsername forwards the username param', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: '1' })));
 
-    const result = await service.getUserByUsername('elonmusk');
+    const result = await service.getUserByUsername({ username: 'elonmusk' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.USER_BY_USERNAME,
       {
-        params: { screenname: 'elonmusk' },
+        params: { username: 'elonmusk' },
       },
     );
     expect(result).toEqual({ id: '1' });
   });
 
+  it('getUserById forwards the id param', async () => {
+    httpService.get.mockReturnValue(of(mockAxiosResponse({ id: '44196397' })));
+
+    await service.getUserById({ id: '44196397' });
+
+    expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.USER_BY_ID, {
+      params: { id: '44196397' },
+    });
+  });
+
   it('getUserTweets forwards an optional cursor', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getUserTweets('elonmusk', 'cursor123');
+    await service.getUserTweets({ username: 'elonmusk', cursor: 'cursor123' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.USER_TWEETS,
       {
-        params: { screenname: 'elonmusk', cursor: 'cursor123' },
+        params: { username: 'elonmusk', cursor: 'cursor123' },
       },
     );
   });
 
-  it('getUserTweets omits the cursor when not provided', async () => {
+  it('strips undefined and empty values from query params', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getUserTweets('elonmusk');
+    await service.getUserTweets({
+      username: 'elonmusk',
+      cursor: undefined,
+      extra: '',
+    });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.USER_TWEETS,
       {
-        params: { screenname: 'elonmusk' },
+        params: { username: 'elonmusk' },
       },
     );
   });
 
-  it('getTweetDetail calls the tweet endpoint with the tweet id', async () => {
+  it('getTweetDetails calls the tweet details endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: '999' })));
 
-    await service.getTweetDetail('999');
+    await service.getTweetDetails({ id: '999' });
 
     expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.TWEET_DETAIL,
+      TWITTER_ENDPOINTS.TWEET_DETAILS,
       {
         params: { id: '999' },
       },
     );
   });
 
-  it('checkRetweet sends both the tweet id and user id', async () => {
-    httpService.get.mockReturnValue(of(mockAxiosResponse({ retweeted: true })));
-
-    await service.checkRetweet('999', '123');
-
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.CHECK_RETWEET,
-      {
-        params: { id: '999', user: '123' },
-      },
-    );
-  });
-
-  it('search defaults to the Top search type', async () => {
+  it('search forwards the query param', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ results: [] })));
 
-    await service.search('nestjs');
+    await service.search({ query: 'nestjs' });
 
     expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.SEARCH, {
-      params: { query: 'nestjs', search_type: TwitterSearchType.TOP },
+      params: { query: 'nestjs' },
     });
   });
 
-  it('search forwards a custom search type and cursor', async () => {
-    httpService.get.mockReturnValue(of(mockAxiosResponse({ results: [] })));
-
-    await service.search('nestjs', TwitterSearchType.LATEST, 'cursor123');
-
-    expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.SEARCH, {
-      params: {
-        query: 'nestjs',
-        search_type: TwitterSearchType.LATEST,
-        cursor: 'cursor123',
-      },
-    });
-  });
-
-  it('getTrends omits woeid when not provided', async () => {
-    httpService.get.mockReturnValue(of(mockAxiosResponse({ trends: [] })));
-
-    await service.getTrends();
-
-    expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.TRENDS, {
-      params: {},
-    });
-  });
-
-  it('getCommunityTimeline calls the community timeline endpoint', async () => {
+  it('getCommunityTweets calls the community tweets endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getCommunityTimeline('123', 'cursor123');
+    await service.getCommunityTweets({ id: '123', cursor: 'cursor123' });
 
     expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.COMMUNITY_TIMELINE,
+      TWITTER_ENDPOINTS.COMMUNITY_TWEETS,
       {
         params: { id: '123', cursor: 'cursor123' },
       },
     );
   });
 
-  it('getListTimeline calls the list timeline endpoint', async () => {
+  it('getListTweets calls the list tweets endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getListTimeline('456');
+    await service.getListTweets({ id: '456' });
 
     expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.LIST_TIMELINE,
+      TWITTER_ENDPOINTS.LIST_TWEETS,
       {
-        params: { list_id: '456' },
+        params: { id: '456' },
       },
     );
   });
 
-  it('getSpaceDetails calls the space endpoint', async () => {
+  it('getSpaceById calls the space endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: 'abc' })));
 
-    await service.getSpaceDetails('abc');
+    await service.getSpaceById({ id: 'abc' });
 
     expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.SPACE_DETAILS,
+      TWITTER_ENDPOINTS.SPACE_BY_ID,
       {
         params: { id: 'abc' },
       },

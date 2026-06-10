@@ -1,12 +1,19 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TwitterService } from './twitter.service';
-import { CursorQueryDto } from './dto/cursor-query.dto';
-import { SearchQueryDto, TwitterSearchType } from './dto/search-query.dto';
-import { TrendsQueryDto } from './dto/trends-query.dto';
-import { CheckRetweetQueryDto } from './dto/check-retweet-query.dto';
 import { TwitterApiResponse } from './interfaces/twitter-api-response.interface';
 
+/**
+ * Routes mirror the upstream Twitter API47 `/v3/...` paths 1:1 (mounted
+ * under `/twitter`), so `GET /twitter/v3/user/by-username?username=elonmusk`
+ * proxies directly to `GET /v3/user/by-username?username=elonmusk` upstream.
+ *
+ * All query parameters are forwarded to the upstream API verbatim. The
+ * `@ApiQuery` annotations document the parameter names we could confirm or
+ * infer; verify against your RapidAPI dashboard/playground if a value
+ * doesn't behave as expected and pass whatever params the upstream expects -
+ * they will be forwarded unchanged.
+ */
 @ApiTags('twitter')
 @Controller('twitter')
 export class TwitterController {
@@ -16,203 +23,241 @@ export class TwitterController {
   // Users
   // ---------------------------------------------------------------------
 
-  @Get('users/:username')
+  @Get('v3/user/by-username')
   @ApiOperation({ summary: "Get a user's profile by username" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
+  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
   getUserByUsername(
-    @Param('username') username: string,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserByUsername(username);
+    return this.twitterService.getUserByUsername(query);
   }
 
-  @Get('users/:username/tweets')
+  @Get('v3/user/by-id')
+  @ApiOperation({ summary: "Get a user's profile by numeric user ID" })
+  @ApiQuery({ name: 'id', required: false, example: '44196397' })
+  getUserById(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getUserById(query);
+  }
+
+  @Get('v3/user/by-ids')
+  @ApiOperation({
+    summary: 'Batch lookup of user profiles by numeric user IDs',
+  })
+  @ApiQuery({
+    name: 'ids',
+    required: false,
+    description: 'Comma-separated user IDs',
+  })
+  getUsersByIds(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getUsersByIds(query);
+  }
+
+  @Get('v3/user/tweets')
   @ApiOperation({ summary: "Get a user's tweets" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
   getUserTweets(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserTweets(username, cursor);
+    return this.twitterService.getUserTweets(query);
   }
 
-  @Get('users/:username/tweets-and-replies')
+  @Get('v3/user/tweets-and-replies')
   @ApiOperation({ summary: "Get a user's tweets and replies" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
   getUserTweetsAndReplies(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserTweetsAndReplies(username, cursor);
+    return this.twitterService.getUserTweetsAndReplies(query);
   }
 
-  @Get('users/:username/media')
-  @ApiOperation({ summary: "Get a user's media (photos & videos)" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
-  getUserMedia(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserMedia(username, cursor);
-  }
-
-  @Get('users/:username/likes')
-  @ApiOperation({ summary: 'Get the tweets a user has liked' })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
-  getUserLikes(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserLikes(username, cursor);
-  }
-
-  @Get('users/:username/followers')
+  @Get('v3/user/followers')
   @ApiOperation({ summary: "Get a user's followers" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
   getUserFollowers(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowers(username, cursor);
+    return this.twitterService.getUserFollowers(query);
   }
 
-  @Get('users/:username/following')
+  @Get('v3/user/followers-ids')
+  @ApiOperation({ summary: "Get the numeric IDs of a user's followers" })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getUserFollowersIds(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getUserFollowersIds(query);
+  }
+
+  @Get('v3/user/following')
   @ApiOperation({ summary: 'Get the accounts a user follows' })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
   getUserFollowing(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowing(username, cursor);
+    return this.twitterService.getUserFollowing(query);
   }
 
-  @Get('users/:username/highlights')
-  @ApiOperation({ summary: "Get a user's highlighted tweets" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
-  getUserHighlights(
-    @Param('username') username: string,
-    @Query() { cursor }: CursorQueryDto,
+  @Get('v3/user/following-ids')
+  @ApiOperation({ summary: 'Get the numeric IDs of accounts a user follows' })
+  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getUserFollowingIds(
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserHighlights(username, cursor);
-  }
-
-  @Get('users/:username/affiliates')
-  @ApiOperation({ summary: "Get a user's verified affiliate accounts" })
-  @ApiParam({ name: 'username', example: 'elonmusk' })
-  getUserAffiliates(
-    @Param('username') username: string,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserAffiliates(username);
+    return this.twitterService.getUserFollowingIds(query);
   }
 
   // ---------------------------------------------------------------------
   // Tweets
   // ---------------------------------------------------------------------
 
-  @Get('tweets/:id')
-  @ApiOperation({ summary: 'Get a tweet by ID' })
-  @ApiParam({ name: 'id', example: '1881854756446003222' })
-  getTweetDetail(
-    @Param('id') id: string,
-    @Query() { cursor }: CursorQueryDto,
+  @Get('v3/tweet/details')
+  @ApiOperation({ summary: "Get a tweet's details" })
+  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getTweetDetails(
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetDetail(id, cursor);
+    return this.twitterService.getTweetDetails(query);
   }
 
-  @Get('tweets/:id/replies')
-  @ApiOperation({ summary: 'Get the reply thread for a tweet' })
-  @ApiParam({ name: 'id', example: '1881854756446003222' })
-  getTweetReplies(
-    @Param('id') id: string,
-    @Query() { cursor }: CursorQueryDto,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetReplies(id, cursor);
-  }
-
-  @Get('tweets/:id/retweets')
+  @Get('v3/tweet/retweets')
   @ApiOperation({ summary: 'Get the users who retweeted a tweet' })
-  @ApiParam({ name: 'id', example: '1881854756446003222' })
+  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'cursor', required: false })
   getTweetRetweets(
-    @Param('id') id: string,
-    @Query() { cursor }: CursorQueryDto,
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetRetweets(id, cursor);
+    return this.twitterService.getTweetRetweets(query);
   }
 
-  @Get('tweets/:id/check-retweet')
-  @ApiOperation({ summary: 'Check whether a user retweeted a tweet' })
-  @ApiParam({ name: 'id', example: '1881854756446003222' })
-  checkRetweet(
-    @Param('id') id: string,
-    @Query() { userId }: CheckRetweetQueryDto,
+  @Get('v3/tweet/quotes')
+  @ApiOperation({ summary: 'Get the quote tweets of a tweet' })
+  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getTweetQuotes(
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.checkRetweet(id, userId);
+    return this.twitterService.getTweetQuotes(query);
   }
 
   // ---------------------------------------------------------------------
-  // Search & trends
+  // Search
   // ---------------------------------------------------------------------
 
-  @Get('search')
-  @ApiOperation({ summary: 'Search tweets, users, photos or videos' })
-  search(
-    @Query() { query, searchType, cursor }: SearchQueryDto,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.search(
-      query,
-      searchType ?? TwitterSearchType.TOP,
-      cursor,
-    );
-  }
-
-  @Get('trends')
-  @ApiOperation({ summary: 'Get trending topics for a location' })
-  getTrends(@Query() { woeid }: TrendsQueryDto): Promise<TwitterApiResponse> {
-    return this.twitterService.getTrends(woeid);
+  @Get('v3/search')
+  @ApiOperation({ summary: 'Search tweets/users' })
+  @ApiQuery({ name: 'query', required: false, example: 'nestjs' })
+  @ApiQuery({ name: 'cursor', required: false })
+  search(@Query() query: Record<string, string>): Promise<TwitterApiResponse> {
+    return this.twitterService.search(query);
   }
 
   // ---------------------------------------------------------------------
   // Communities
   // ---------------------------------------------------------------------
 
-  @Get('communities/:id')
+  @Get('v3/community/details')
   @ApiOperation({ summary: 'Get details about a Twitter Community' })
-  @ApiParam({ name: 'id', example: '1493446837214187523' })
-  getCommunityDetails(@Param('id') id: string): Promise<TwitterApiResponse> {
-    return this.twitterService.getCommunityDetails(id);
+  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  getCommunityDetails(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getCommunityDetails(query);
   }
 
-  @Get('communities/:id/timeline')
-  @ApiOperation({ summary: 'Get the tweet timeline of a Twitter Community' })
-  @ApiParam({ name: 'id', example: '1493446837214187523' })
-  getCommunityTimeline(
-    @Param('id') id: string,
-    @Query() { cursor }: CursorQueryDto,
+  @Get('v3/community/tweets')
+  @ApiOperation({ summary: "Get a Community's tweet timeline" })
+  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getCommunityTweets(
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getCommunityTimeline(id, cursor);
+    return this.twitterService.getCommunityTweets(query);
+  }
+
+  @Get('v3/community/members')
+  @ApiOperation({ summary: "Get a Community's members" })
+  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getCommunityMembers(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getCommunityMembers(query);
+  }
+
+  @Get('v3/community/search')
+  @ApiOperation({ summary: 'Search Twitter Communities' })
+  @ApiQuery({ name: 'query', required: false })
+  @ApiQuery({ name: 'cursor', required: false })
+  searchCommunities(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.searchCommunities(query);
   }
 
   // ---------------------------------------------------------------------
   // Lists
   // ---------------------------------------------------------------------
 
-  @Get('lists/:id/timeline')
-  @ApiOperation({ summary: 'Get the tweet timeline of a Twitter List' })
-  @ApiParam({ name: 'id', example: '1234567890' })
-  getListTimeline(
-    @Param('id') id: string,
-    @Query() { cursor }: CursorQueryDto,
+  @Get('v3/list/tweets')
+  @ApiOperation({ summary: "Get a List's tweet timeline" })
+  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getListTweets(
+    @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
-    return this.twitterService.getListTimeline(id, cursor);
+    return this.twitterService.getListTweets(query);
+  }
+
+  @Get('v3/list/members')
+  @ApiOperation({ summary: "Get a List's members" })
+  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getListMembers(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getListMembers(query);
+  }
+
+  @Get('v3/list/details')
+  @ApiOperation({ summary: 'Get details about a List' })
+  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  getListDetails(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getListDetails(query);
+  }
+
+  @Get('v3/list/followers')
+  @ApiOperation({ summary: "Get a List's followers" })
+  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'cursor', required: false })
+  getListFollowers(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getListFollowers(query);
   }
 
   // ---------------------------------------------------------------------
   // Spaces
   // ---------------------------------------------------------------------
 
-  @Get('spaces/:id')
+  @Get('v3/space/by-id')
   @ApiOperation({ summary: 'Get details about a Twitter Space' })
-  @ApiParam({ name: 'id', example: '1RDxlgyZbnAJL' })
-  getSpaceDetails(@Param('id') id: string): Promise<TwitterApiResponse> {
-    return this.twitterService.getSpaceDetails(id);
+  @ApiQuery({ name: 'id', required: false, example: '1RDxlgyZbnAJL' })
+  getSpaceById(
+    @Query() query: Record<string, string>,
+  ): Promise<TwitterApiResponse> {
+    return this.twitterService.getSpaceById(query);
   }
 }

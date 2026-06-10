@@ -1,13 +1,21 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
-import { AxiosRequestConfig } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { TWITTER_ENDPOINTS } from './constants/twitter-endpoints.constant';
 import { TwitterApiResponse } from './interfaces/twitter-api-response.interface';
-import { TwitterSearchType } from './dto/search-query.dto';
 
-type QueryParams = Record<string, string | number | boolean | undefined>;
+export type TwitterQuery = Record<
+  string,
+  string | number | boolean | undefined
+>;
 
+/**
+ * Thin 1:1 wrapper around the Twitter API47 (RapidAPI) `/v3` endpoints.
+ *
+ * Every method forwards the given query params verbatim to the matching
+ * upstream endpoint (see `twitter-endpoints.constant.ts`), so any parameter
+ * accepted by the upstream API can be passed through unchanged.
+ */
 @Injectable()
 export class TwitterService {
   private readonly logger = new Logger(TwitterService.name);
@@ -15,216 +23,159 @@ export class TwitterService {
   constructor(private readonly httpService: HttpService) {}
 
   // ---------------------------------------------------------------------
-  // User endpoints
+  // Users
   // ---------------------------------------------------------------------
 
-  /** Get a user's profile by their @username (screen name). */
-  getUserByUsername(username: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_BY_USERNAME, {
-      screenname: username,
-    });
+  /** GET /v3/user/by-username - get a user's profile by @username. */
+  getUserByUsername(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_BY_USERNAME, query);
   }
 
-  /** Get a user's tweet timeline. */
-  getUserTweets(
-    username: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_TWEETS, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/by-id - get a user's profile by numeric user ID. */
+  getUserById(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_BY_ID, query);
   }
 
-  /** Get a user's timeline including replies. */
-  getUserTweetsAndReplies(
-    username: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_TWEETS_AND_REPLIES, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/by-ids - batch lookup of user profiles by ID. */
+  getUsersByIds(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USERS_BY_IDS, query);
   }
 
-  /** Get the photos/videos a user has posted. */
-  getUserMedia(username: string, cursor?: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_MEDIA, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/tweets - get a user's tweets. */
+  getUserTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
   }
 
-  /** Get the tweets a user has liked. */
-  getUserLikes(username: string, cursor?: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_LIKES, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/tweets-and-replies - get a user's tweets and replies. */
+  getUserTweetsAndReplies(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_TWEETS_AND_REPLIES, query);
   }
 
-  /** Get a user's followers. */
-  getUserFollowers(
-    username: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_FOLLOWERS, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/followers - get a user's followers. */
+  getUserFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, query);
   }
 
-  /** Get the accounts a user follows. */
-  getUserFollowing(
-    username: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_FOLLOWING, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/followers-ids - get the numeric IDs of a user's followers. */
+  getUserFollowersIds(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS_IDS, query);
   }
 
-  /** Get a user's highlighted tweets. */
-  getUserHighlights(
-    username: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_HIGHLIGHTS, {
-      screenname: username,
-      cursor,
-    });
+  /** GET /v3/user/following - get the accounts a user follows. */
+  getUserFollowing(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWING, query);
   }
 
-  /** Get a user's verified affiliate accounts. */
-  getUserAffiliates(username: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.USER_AFFILIATES, {
-      screenname: username,
-    });
+  /** GET /v3/user/following-ids - get the numeric IDs of accounts a user follows. */
+  getUserFollowingIds(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWING_IDS, query);
   }
 
   // ---------------------------------------------------------------------
-  // Tweet endpoints
+  // Tweets
   // ---------------------------------------------------------------------
 
-  /** Get a single tweet by ID, including its conversation thread. */
-  getTweetDetail(
-    tweetId: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.TWEET_DETAIL, { id: tweetId, cursor });
+  /** GET /v3/tweet/details - get a tweet's details. */
+  getTweetDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.TWEET_DETAILS, query);
   }
 
-  /** Get the reply thread for a tweet. */
-  getTweetReplies(
-    tweetId: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.TWEET_THREAD, { id: tweetId, cursor });
+  /** GET /v3/tweet/retweets - get the users who retweeted a tweet. */
+  getTweetRetweets(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.TWEET_RETWEETS, query);
   }
 
-  /** Get the users who retweeted a tweet. */
-  getTweetRetweets(
-    tweetId: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.TWEET_RETWEETS, { id: tweetId, cursor });
-  }
-
-  /** Check whether a given user has retweeted a given tweet. */
-  checkRetweet(tweetId: string, userId: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.CHECK_RETWEET, {
-      id: tweetId,
-      user: userId,
-    });
+  /** GET /v3/tweet/quotes - get the quote tweets of a tweet. */
+  getTweetQuotes(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.TWEET_QUOTES, query);
   }
 
   // ---------------------------------------------------------------------
-  // Search & trends
+  // Search
   // ---------------------------------------------------------------------
 
-  /** Search tweets, users, photos or videos. */
-  search(
-    query: string,
-    searchType: TwitterSearchType = TwitterSearchType.TOP,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.SEARCH, {
-      query,
-      search_type: searchType,
-      cursor,
-    });
-  }
-
-  /** Get trending topics for a location (defaults to worldwide). */
-  getTrends(woeid?: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.TRENDS, { woeid });
+  /** GET /v3/search - search tweets/users. */
+  search(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.SEARCH, query);
   }
 
   // ---------------------------------------------------------------------
   // Communities
   // ---------------------------------------------------------------------
 
-  /** Get metadata about a Twitter Community. */
-  getCommunityDetails(communityId: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.COMMUNITY_DETAILS, { id: communityId });
+  /** GET /v3/community/details - get details about a Community. */
+  getCommunityDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_DETAILS, query);
   }
 
-  /** Get the tweet timeline of a Twitter Community. */
-  getCommunityTimeline(
-    communityId: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.COMMUNITY_TIMELINE, {
-      id: communityId,
-      cursor,
-    });
+  /** GET /v3/community/tweets - get a Community's tweet timeline. */
+  getCommunityTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_TWEETS, query);
+  }
+
+  /** GET /v3/community/members - get a Community's members. */
+  getCommunityMembers(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_MEMBERS, query);
+  }
+
+  /** GET /v3/community/search - search Communities. */
+  searchCommunities(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_SEARCH, query);
   }
 
   // ---------------------------------------------------------------------
   // Lists
   // ---------------------------------------------------------------------
 
-  /** Get the tweet timeline of a Twitter List. */
-  getListTimeline(
-    listId: string,
-    cursor?: string,
-  ): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.LIST_TIMELINE, {
-      list_id: listId,
-      cursor,
-    });
+  /** GET /v3/list/tweets - get a List's tweet timeline. */
+  getListTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.LIST_TWEETS, query);
+  }
+
+  /** GET /v3/list/members - get a List's members. */
+  getListMembers(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.LIST_MEMBERS, query);
+  }
+
+  /** GET /v3/list/details - get details about a List. */
+  getListDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.LIST_DETAILS, query);
+  }
+
+  /** GET /v3/list/followers - get a List's followers. */
+  getListFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.LIST_FOLLOWERS, query);
   }
 
   // ---------------------------------------------------------------------
   // Spaces
   // ---------------------------------------------------------------------
 
-  /** Get details about a Twitter Space. */
-  getSpaceDetails(spaceId: string): Promise<TwitterApiResponse> {
-    return this.get(TWITTER_ENDPOINTS.SPACE_DETAILS, { id: spaceId });
+  /** GET /v3/space/by-id - get details about a Space. */
+  getSpaceById(query: TwitterQuery): Promise<TwitterApiResponse> {
+    return this.proxy(TWITTER_ENDPOINTS.SPACE_BY_ID, query);
   }
 
   // ---------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------
 
-  private async get(
+  private async proxy(
     endpoint: string,
-    params: QueryParams = {},
+    query: TwitterQuery,
   ): Promise<TwitterApiResponse> {
-    const config: AxiosRequestConfig = { params: this.cleanParams(params) };
-    this.logger.debug(`GET ${endpoint} ${JSON.stringify(config.params)}`);
+    const params = this.cleanParams(query);
+    this.logger.debug(`GET ${endpoint} ${JSON.stringify(params)}`);
     const response = await firstValueFrom(
-      this.httpService.get<TwitterApiResponse>(endpoint, config),
+      this.httpService.get<TwitterApiResponse>(endpoint, { params }),
     );
     return response.data;
   }
 
   /** Strips undefined/empty values so they aren't forwarded as query params. */
-  private cleanParams(params: QueryParams): QueryParams {
+  private cleanParams(query: TwitterQuery): TwitterQuery {
     return Object.fromEntries(
-      Object.entries(params).filter(
+      Object.entries(query).filter(
         ([, value]) => value !== undefined && value !== '',
       ),
     );
