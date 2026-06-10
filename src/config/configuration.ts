@@ -11,7 +11,7 @@ export interface AppConfig {
     limit: number;
   };
   database: {
-    path: string;
+    url: string;
   };
 }
 
@@ -29,6 +29,8 @@ export default (): AppConfig => ({
     limit: parseInt(process.env.THROTTLE_LIMIT ?? '60', 10),
   },
   database: {
-    path: process.env.DATABASE_PATH ?? 'data/db.sqlite',
+    url:
+      process.env.DATABASE_URL ??
+      'postgresql://postgres:postgres@localhost:5432/x_api',
   },
 });

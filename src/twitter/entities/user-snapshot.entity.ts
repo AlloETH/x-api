@@ -36,7 +36,7 @@ export class UserSnapshotEntity {
   @Column({ type: 'boolean', default: false })
   verified: boolean;
 
-  @Column({ type: 'simple-json' })
+  @Column({ type: 'jsonb' })
   raw: Record<string, unknown>;
 
   @CreateDateColumn()

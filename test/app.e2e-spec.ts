@@ -8,7 +8,9 @@ describe('AppController (e2e)', () => {
 
   beforeAll(async () => {
     process.env.RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? 'test-key';
-    process.env.DATABASE_PATH = process.env.DATABASE_PATH ?? ':memory:';
+    process.env.DATABASE_URL =
+      process.env.DATABASE_URL ??
+      'postgresql://postgres:postgres@localhost:5432/x_api';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

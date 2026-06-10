@@ -33,7 +33,7 @@ export class SmartFollowerEntity {
   @Column({ type: 'float', default: 0 })
   score: number;
 
-  @Column({ type: 'simple-json' })
+  @Column({ type: 'jsonb' })
   raw: Record<string, unknown>;
 
   @CreateDateColumn()

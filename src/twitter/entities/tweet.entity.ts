@@ -32,7 +32,7 @@ export class TweetEntity {
   @Column({ type: 'boolean', default: false })
   isPaidPartnership: boolean;
 
-  @Column({ type: 'simple-json' })
+  @Column({ type: 'jsonb' })
   raw: Record<string, unknown>;
 
   @CreateDateColumn()

@@ -40,7 +40,7 @@ changes needed if a guessed name is wrong.
 - Built-in rate limiting (`@nestjs/throttler`) to help stay within your
   RapidAPI plan's quota.
 - **Persistence**: user profiles and tweets fetched through the API are
-  stored in a local SQLite database via TypeORM (see
+  stored in a PostgreSQL database via TypeORM (see
   [Database & persistence](#database--persistence)).
 - **Derived analytics endpoints** (computed locally, inspired by
   [app.sorsa.io](https://app.sorsa.io)):
@@ -61,7 +61,17 @@ changes needed if a guessed name is wrong.
 npm install
 ```
 
-### 2. Configure environment variables
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d
+```
+
+This starts a local Postgres instance (`postgres:16-alpine`) matching the
+default `DATABASE_URL` below, with data persisted in a `postgres-data` Docker
+volume.
+
+### 3. Configure environment variables
 
 Copy `.env.example` to `.env` and set your RapidAPI credentials:
 
@@ -78,9 +88,9 @@ cp .env.example .env
 | `RAPIDAPI_TIMEOUT`    | Upstream request timeout (ms)                              | `10000`                                |
 | `THROTTLE_TTL`        | Rate limit window (ms)                                     | `60000`                                |
 | `THROTTLE_LIMIT`      | Max requests per window                                    | `60`                                   |
-| `DATABASE_PATH`       | SQLite file path used to persist fetched data (`:memory:` for ephemeral) | `data/db.sqlite`         |
+| `DATABASE_URL`        | PostgreSQL connection string used to persist fetched data  | `postgresql://postgres:postgres@localhost:5432/x_api` |
 
-### 3. Run the app
+### 4. Run the app
 
 ```bash
 npm run start:dev
@@ -89,11 +99,11 @@ npm run start:dev
 The API is available at `http://localhost:3000` and interactive Swagger docs
 at `http://localhost:3000/docs`.
 
-### 4. Run tests
+### 5. Run tests
 
 ```bash
 npm run test       # unit tests
-npm run test:e2e   # end-to-end tests
+npm run test:e2e   # end-to-end tests (requires Postgres - see step 2)
 npm run test:cov   # coverage
 ```
 
@@ -195,13 +205,12 @@ as query params to the matching upstream endpoint
 
 ## Database & persistence
 
-The app uses [TypeORM](https://typeorm.io) with a SQLite database
-(`better-sqlite3` driver) to persist data fetched from the upstream API,
-configured via `DATABASE_PATH` (defaults to `data/db.sqlite`, created
-automatically; `synchronize: true` auto-creates the schema, which is fine at
-this scale - swap to migrations if you outgrow it). Persistence is
-best-effort: a database error is logged but never breaks the proxied API
-response.
+The app uses [TypeORM](https://typeorm.io) with PostgreSQL (`pg` driver) to
+persist data fetched from the upstream API, configured via `DATABASE_URL`
+(defaults to the `docker-compose.yml` Postgres instance; `synchronize: true`
+auto-creates the schema, which is fine at this scale - swap to migrations if
+you outgrow it). Persistence is best-effort: a database error is logged but
+never breaks the proxied API response.
 
 | Table             | Populated by                                                          | Contents                                                |
 | ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
@@ -249,7 +258,7 @@ src/
 ├── main.ts                  # Bootstrap, global pipes/filters, Swagger
 ├── config/                   # Environment configuration & validation
 ├── database/
-│   └── database.module.ts    # TypeORM (SQLite) setup
+│   └── database.module.ts    # TypeORM (PostgreSQL) setup
 ├── common/
 │   ├── filters/               # Upstream error -> HTTP exception translation
 │   └── interceptors/          # Request logging

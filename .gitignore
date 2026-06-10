@@ -13,11 +13,6 @@ yarn-error.log*
 # env
 .env
 
-# database
-/data
-*.sqlite
-*.sqlite3
-
 # coverage
 /coverage
 
