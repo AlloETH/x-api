@@ -142,7 +142,7 @@ for how each one is computed.
 | Method | Path                                     | Params                          | Description                                          |
 | ------ | ------------------------------------------ | ----------------------------- | ----------------------------------------------------- |
 | GET    | `/twitter/v3/user/smart-followers`          | `username` or `userId` *(one required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
-| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `cursor` | A user's tweets flagged as paid partnership / branded content from the last 30 days |
+| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `period` (default `30d`, e.g. `7d`/`3m`/`1y`), `cursor` | A user's tweets flagged as paid partnership / branded content over `period` (only the last 7 days are re-fetched live; older data comes from the database) |
 | GET    | `/twitter/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
 
 ### Tweets
@@ -214,7 +214,7 @@ never breaks the proxied API response.
 | Table             | Populated by                                                          | Contents                                                |
 | ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
 | `user_snapshots`    | `user/by-username`, `user/by-id`, `user/by-ids`, `user/stats`             | One row per fetch (id, username, follower/following/tweet counts, verified, raw JSON, timestamp) - enables follower-growth tracking over time |
-| `tweets`            | `user/tweets`, `user/tweets-and-replies`, `user/paid-partnership-tweets`  | One row per tweet, upserted by ID (author, text, `isPaidPartnership` flag, raw JSON) |
+| `tweets`            | `user/tweets`, `user/tweets-and-replies`, `user/paid-partnership-tweets`  | One row per tweet, upserted by ID (author, text, `tweetCreatedAt`, `isPaidPartnership` flag, raw JSON) - `tweetCreatedAt` lets `paid-partnership-tweets` serve longer `period`s from the database |
 | `smart_followers`   | `user/smart-followers`                                                    | The latest ranked "smart followers" per target account (upserted by target + follower username) |
 
 ## Smart followers, paid partnerships & stats
@@ -235,18 +235,25 @@ both derived endpoints accept either `username` or `userId` and resolve a
   plus a large bonus if the account is verified (`verified` or
   `isBlueVerified`) - then sorted descending and truncated to `limit`
   (default 25).
-- **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): always
-  covers the **last 30 days** of the user's timeline (`PAID_PARTNERSHIP_LOOKBACK_DAYS`
-  in `twitter.service.ts`), regardless of how many tweets that spans. It
-  paginates through `/v3/user/tweets` via `pagination.nextCursor` (tweets are
-  returned newest-first), stopping as soon as it sees a tweet older than 30
+- **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): covers a
+  configurable lookback `period` - a number followed by `d`/`m`/`y`, e.g.
+  `7d`, `30d`, `3m`, `6m`, `1y`, `2y` (default `30d`, see
+  `PAID_PARTNERSHIP_DEFAULT_PERIOD` in `twitter.service.ts`; `m` = 30 days,
+  `y` = 365 days). However long `period` is, **only the most recent
+  `PAID_PARTNERSHIP_REFRESH_DAYS` (7) days are re-fetched from
+  `/v3/user/tweets`** - paginating via `pagination.nextCursor` (tweets are
+  returned newest-first), stopping as soon as it sees a tweet older than 7
   days, or after `PAID_PARTNERSHIP_MAX_PAGES` (10) pages, whichever comes
-  first. Every fetched tweet is persisted; each one is checked by
-  `isPaidPartnershipTweet`, which uses the confirmed `isPaidPromotion` boolean
-  returned by the upstream API, falling back to a keyword scan of the raw
-  tweet JSON (`paid partnership`, `branded content`, `promoted tweet`,
-  `advertiser`, `sponsorship`) for any tweet that doesn't set that field. The
-  matching tweets are returned with their `createdAt` timestamp.
+  first. The rest of `period` is served from previously-stored tweets
+  (`tweets.tweetCreatedAt`), so longer periods (`6m`, `1y`, `2y`) get more
+  complete the longer this endpoint has been polled regularly, without
+  costing extra upstream requests. Every fetched tweet is persisted with its
+  `createdAt`; each one is checked by `isPaidPartnershipTweet`, which uses the
+  confirmed `isPaidPromotion` boolean returned by the upstream API, falling
+  back to a keyword scan of the raw tweet JSON (`paid partnership`, `branded
+  content`, `promoted tweet`, `advertiser`, `sponsorship`) for any tweet that
+  doesn't set that field. The matching tweets (fresh + stored) are merged,
+  sorted newest-first, and returned with their `createdAt` timestamp.
 - **Stats** (`/v3/user/stats`): re-fetches the user's profile, computes an
   `influenceScore` (log-scaled reach + follower/following ratio + a
   verification bonus) via `computeInfluenceScore`, and diffs the new

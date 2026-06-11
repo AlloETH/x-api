@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Between } from 'typeorm';
 import { SmartFollowerEntity } from './entities/smart-follower.entity';
 import { TweetEntity } from './entities/tweet.entity';
 import { UserSnapshotEntity } from './entities/user-snapshot.entity';
@@ -10,6 +11,7 @@ const createRepoMock = () => ({
   create: jest.fn((entity) => entity),
   save: jest.fn().mockResolvedValue(undefined),
   findOne: jest.fn().mockResolvedValue(null),
+  find: jest.fn().mockResolvedValue([]),
 });
 
 describe('TwitterStorageService', () => {
@@ -168,6 +170,65 @@ describe('TwitterStorageService', () => {
           isPaidPartnership: true,
         }),
       ]);
+    });
+
+    it('stores the tweet creation timestamp', async () => {
+      const response = {
+        data: [
+          {
+            id: '4',
+            text: 'Check out this product',
+            isPaidPromotion: true,
+            createdAt: '2026-06-10T22:44:30.000Z',
+          },
+        ],
+      };
+
+      await service.saveTweets(response);
+
+      expect(tweetRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: '4',
+          tweetCreatedAt: new Date('2026-06-10T22:44:30.000Z'),
+        }),
+      ]);
+    });
+  });
+
+  describe('getStoredPaidPartnershipTweets', () => {
+    it('queries persisted paid-partnership tweets by author and date range', async () => {
+      const stored = [{ id: '1', authorId: '44196397' }];
+      tweetRepo.find.mockResolvedValue(stored);
+      const since = new Date('2026-01-01T00:00:00.000Z');
+      const until = new Date('2026-06-01T00:00:00.000Z');
+
+      const result = await service.getStoredPaidPartnershipTweets(
+        '44196397',
+        since,
+        until,
+      );
+
+      expect(tweetRepo.find).toHaveBeenCalledWith({
+        where: {
+          authorId: '44196397',
+          isPaidPartnership: true,
+          tweetCreatedAt: Between(since, until),
+        },
+        order: { tweetCreatedAt: 'DESC' },
+      });
+      expect(result).toBe(stored);
+    });
+
+    it('returns an empty array if the repository fails', async () => {
+      tweetRepo.find.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.getStoredPaidPartnershipTweets(
+          '44196397',
+          new Date(),
+          new Date(),
+        ),
+      ).resolves.toEqual([]);
     });
   });
 

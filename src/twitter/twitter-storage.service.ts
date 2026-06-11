@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { SmartFollowerEntity } from './entities/smart-follower.entity';
 import { TweetEntity } from './entities/tweet.entity';
 import { UserSnapshotEntity } from './entities/user-snapshot.entity';
@@ -94,6 +94,7 @@ export class TwitterStorageService {
             authorId: tweet.authorId,
             authorUsername: tweet.authorUsername,
             text: tweet.text,
+            tweetCreatedAt: tweet.createdAt ? new Date(tweet.createdAt) : null,
             isPaidPartnership: isPaidPartnershipTweet(tweet),
             raw: tweet.raw,
           }),
@@ -104,6 +105,34 @@ export class TwitterStorageService {
     }
 
     return tweets;
+  }
+
+  /**
+   * Returns previously-stored paid-partnership tweets by `authorId` with
+   * `tweetCreatedAt` between `since` and `until` (inclusive), newest first.
+   * Used to serve the portion of a `paid-partnership-tweets` lookback period
+   * that's older than the upstream refresh window.
+   */
+  async getStoredPaidPartnershipTweets(
+    authorId: string,
+    since: Date,
+    until: Date,
+  ): Promise<TweetEntity[]> {
+    try {
+      return await this.tweetRepo.find({
+        where: {
+          authorId,
+          isPaidPartnership: true,
+          tweetCreatedAt: Between(since, until),
+        },
+        order: { tweetCreatedAt: 'DESC' },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load stored paid-partnership tweets for ${authorId}: ${error}`,
+      );
+      return [];
+    }
   }
 
   /** Upserts the ranked "smart followers" computed for `targetUsername`. */

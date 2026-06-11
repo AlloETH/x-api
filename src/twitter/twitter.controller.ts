@@ -148,9 +148,11 @@ export class TwitterController {
     summary:
       "Get a user's tweets flagged as paid partnership / branded content",
     description:
-      'Paginates back through up to 30 days of the user’s tweet ' +
-      'timeline (or 10 pages, whichever comes first) and returns only the ' +
-      'ones flagged as paid partnership / branded content.',
+      'Returns tweets flagged as paid partnership / branded content over ' +
+      'the last `period` (default 30d). However long `period` is, only the ' +
+      'most recent 7 days are re-fetched from the upstream API (paginating ' +
+      'up to 10 pages); anything older is served from previously-stored ' +
+      'tweets.',
   })
   @ApiQuery({
     name: 'username',
@@ -159,6 +161,16 @@ export class TwitterController {
     description: 'Either username or userId is required',
   })
   @ApiQuery({ name: 'userId', required: false, example: '44196397' })
+  @ApiQuery({
+    name: 'period',
+    required: false,
+    example: '30d',
+    description:
+      'How far back to look: a number followed by d/m/y, e.g. "7d", "30d", ' +
+      '"3m", "6m", "1y", "2y" (default "30d"). Only the most recent 7 days ' +
+      'are re-fetched from the upstream API; older data comes from the ' +
+      'database.',
+  })
   @ApiQuery({
     name: 'cursor',
     required: false,

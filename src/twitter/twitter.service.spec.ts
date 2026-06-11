@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { Test, TestingModule } from '@nestjs/testing';
 import { of } from 'rxjs';
@@ -26,6 +27,7 @@ describe('TwitterService', () => {
       saveTweets: jest.fn().mockResolvedValue([]),
       saveSmartFollowers: jest.fn().mockResolvedValue(undefined),
       getLatestSnapshot: jest.fn().mockResolvedValue(null),
+      getStoredPaidPartnershipTweets: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TwitterStorageService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -299,6 +301,7 @@ describe('TwitterService', () => {
       expect(storageService.saveTweets).toHaveBeenCalledWith(tweetsResponse);
       expect(result).toEqual({
         username: 'elonmusk',
+        period: '30d',
         count: 1,
         tweets: [
           {
@@ -312,7 +315,7 @@ describe('TwitterService', () => {
       });
     });
 
-    it('paginates back through the timeline until a tweet older than 30 days is found', async () => {
+    it('paginates back through the timeline until a tweet older than the 7-day refresh window is found', async () => {
       const createdAt2DaysAgo = daysAgo(2);
       const page1 = {
         data: [
@@ -362,10 +365,11 @@ describe('TwitterService', () => {
         TWITTER_ENDPOINTS.USER_TWEETS,
         { params: { userId: '44196397', cursor: 'CURSOR_2' } },
       );
-      // The 40-day-old tweet on page 2 is past the 30-day cutoff, so
+      // The 40-day-old tweet on page 2 is past the 7-day refresh cutoff, so
       // pagination stops there and it's excluded from the result.
       expect(result).toEqual({
         username: 'elonmusk',
+        period: '30d',
         count: 1,
         tweets: [
           {
@@ -377,6 +381,114 @@ describe('TwitterService', () => {
           },
         ],
       });
+    });
+
+    it('does not query stored tweets when period fits within the refresh window', async () => {
+      const createdAt1DayAgo = daysAgo(1);
+      const tweetsResponse = {
+        data: [
+          {
+            id: '1',
+            text: 'recent paid promo',
+            isPaidPromotion: true,
+            createdAt: createdAt1DayAgo,
+          },
+        ],
+      };
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(profileResponse)))
+        .mockReturnValueOnce(of(mockAxiosResponse(tweetsResponse)));
+
+      const result = await service.getPaidPartnershipTweets({
+        username: 'elonmusk',
+        period: '7d',
+      });
+
+      expect(
+        storageService.getStoredPaidPartnershipTweets,
+      ).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        username: 'elonmusk',
+        period: '7d',
+        count: 1,
+        tweets: [
+          {
+            id: '1',
+            authorId: null,
+            authorUsername: null,
+            text: 'recent paid promo',
+            createdAt: createdAt1DayAgo,
+          },
+        ],
+      });
+    });
+
+    it('combines fresh tweets (last 7 days) with stored tweets for longer periods', async () => {
+      const createdAt1DayAgo = daysAgo(1);
+      const tweetsResponse = {
+        data: [
+          {
+            id: '1',
+            text: 'recent paid promo',
+            isPaidPromotion: true,
+            createdAt: createdAt1DayAgo,
+          },
+        ],
+      };
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(profileResponse)))
+        .mockReturnValueOnce(of(mockAxiosResponse(tweetsResponse)));
+
+      const storedCreatedAt = new Date(daysAgo(20));
+      storageService.getStoredPaidPartnershipTweets.mockResolvedValue([
+        {
+          id: '99',
+          authorId: '44196397',
+          authorUsername: 'elonmusk',
+          text: 'old paid promo',
+          tweetCreatedAt: storedCreatedAt,
+        } as any,
+      ]);
+
+      const result = await service.getPaidPartnershipTweets({
+        username: 'elonmusk',
+        period: '3m',
+      });
+
+      expect(
+        storageService.getStoredPaidPartnershipTweets,
+      ).toHaveBeenCalledWith('44196397', expect.any(Date), expect.any(Date));
+      expect(result).toEqual({
+        username: 'elonmusk',
+        period: '3m',
+        count: 2,
+        tweets: [
+          {
+            id: '1',
+            authorId: null,
+            authorUsername: null,
+            text: 'recent paid promo',
+            createdAt: createdAt1DayAgo,
+          },
+          {
+            id: '99',
+            authorId: '44196397',
+            authorUsername: 'elonmusk',
+            text: 'old paid promo',
+            createdAt: storedCreatedAt.toISOString(),
+          },
+        ],
+      });
+    });
+
+    it('throws BadRequestException for an invalid period', async () => {
+      await expect(
+        service.getPaidPartnershipTweets({
+          username: 'elonmusk',
+          period: 'bogus',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(httpService.get).not.toHaveBeenCalled();
     });
   });
 

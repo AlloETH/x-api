@@ -28,6 +28,11 @@ export class TweetEntity {
   @Column({ type: 'text', nullable: true })
   text: string | null;
 
+  /** When the tweet itself was posted (per the upstream `createdAt` field). */
+  @Index()
+  @Column({ type: 'timestamptz', nullable: true })
+  tweetCreatedAt: Date | null;
+
   @Index()
   @Column({ type: 'boolean', default: false })
   isPaidPartnership: boolean;

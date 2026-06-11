@@ -12,14 +12,24 @@ import {
   isPaidPartnershipTweet,
   smartFollowerScore,
 } from './utils/twitter-data.util';
+import { parsePeriodDays } from './utils/period.util';
 
 export type TwitterQuery = Record<
   string,
   string | number | boolean | undefined
 >;
 
-/** How far back `getPaidPartnershipTweets` looks for tweets, by default. */
-const PAID_PARTNERSHIP_LOOKBACK_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Default `period` for `getPaidPartnershipTweets` if none is given. */
+const PAID_PARTNERSHIP_DEFAULT_PERIOD = '30d';
+
+/**
+ * However long a `period` is requested, `getPaidPartnershipTweets` only ever
+ * re-fetches this many days from the upstream API; anything older is served
+ * from previously-stored tweets.
+ */
+const PAID_PARTNERSHIP_REFRESH_DAYS = 7;
 
 /**
  * Hard cap on `/v3/user/tweets` pages fetched per `getPaidPartnershipTweets`
@@ -252,25 +262,38 @@ export class TwitterService {
   }
 
   /**
-   * Fetches a user's tweets (`/v3/user/tweets`), paginating back through up
-   * to `PAID_PARTNERSHIP_MAX_PAGES` pages of the timeline (or until a tweet
-   * older than `PAID_PARTNERSHIP_LOOKBACK_DAYS` is reached - tweets are
-   * returned newest-first), and returns only the ones flagged as paid
-   * partnership / branded content (see `isPaidPartnershipTweet`). Every
-   * fetched tweet is persisted, with the paid-partnership flag stored
-   * alongside each one.
+   * Returns a user's tweets flagged as paid partnership / branded content
+   * (see `isPaidPartnershipTweet`) over the last `period` (default
+   * `PAID_PARTNERSHIP_DEFAULT_PERIOD`, e.g. `7d`, `30d`, `3m`, `6m`, `1y`,
+   * `2y`).
+   *
+   * However long `period` is, only the most recent
+   * `PAID_PARTNERSHIP_REFRESH_DAYS` are re-fetched from `/v3/user/tweets`
+   * (paginating back via `pagination.nextCursor`, up to
+   * `PAID_PARTNERSHIP_MAX_PAGES` pages - tweets are returned newest-first).
+   * Every fetched tweet is persisted, with its `createdAt` and
+   * paid-partnership flag stored alongside it. The remainder of `period`, if
+   * any, is served from previously-stored tweets instead of hitting the
+   * upstream API again.
    */
   async getPaidPartnershipTweets(
     query: TwitterQuery,
   ): Promise<TwitterApiResponse> {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
+    const period =
+      query.period !== undefined
+        ? String(query.period)
+        : PAID_PARTNERSHIP_DEFAULT_PERIOD;
+    const periodDays = parsePeriodDays(period);
     const userId = await this.resolveUserId(query);
-    const cutoff =
-      Date.now() - PAID_PARTNERSHIP_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+
+    const now = Date.now();
+    const periodCutoff = now - periodDays * MS_PER_DAY;
+    const refreshCutoff = now - PAID_PARTNERSHIP_REFRESH_DAYS * MS_PER_DAY;
 
     let cursor = query.cursor !== undefined ? String(query.cursor) : undefined;
-    const tweets: ExtractedTweet[] = [];
+    const freshTweets: ExtractedTweet[] = [];
 
     for (let page = 0; page < PAID_PARTNERSHIP_MAX_PAGES; page++) {
       const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, {
@@ -282,34 +305,60 @@ export class TwitterService {
       const pageTweets = extractTweets(response);
       if (pageTweets.length === 0) break;
 
-      let reachedCutoff = false;
+      let reachedRefreshCutoff = false;
       for (const tweet of pageTweets) {
         const createdAt = tweet.createdAt ? Date.parse(tweet.createdAt) : NaN;
-        if (!Number.isNaN(createdAt) && createdAt < cutoff) {
-          reachedCutoff = true;
+        if (!Number.isNaN(createdAt) && createdAt < refreshCutoff) {
+          reachedRefreshCutoff = true;
           break;
         }
-        tweets.push(tweet);
+        freshTweets.push(tweet);
       }
-      if (reachedCutoff) break;
+      if (reachedRefreshCutoff) break;
 
       const nextCursor: string | undefined = response.pagination?.nextCursor;
       if (!nextCursor) break;
       cursor = nextCursor;
     }
 
-    const paidTweets = tweets.filter(isPaidPartnershipTweet);
-
-    return {
-      username,
-      count: paidTweets.length,
-      tweets: paidTweets.map((tweet) => ({
+    const tweets = freshTweets
+      .filter((tweet) => {
+        const createdAt = tweet.createdAt ? Date.parse(tweet.createdAt) : NaN;
+        return !Number.isNaN(createdAt) && createdAt >= periodCutoff;
+      })
+      .filter(isPaidPartnershipTweet)
+      .map((tweet) => ({
         id: tweet.id,
         authorId: tweet.authorId,
         authorUsername: tweet.authorUsername,
         text: tweet.text,
         createdAt: tweet.createdAt,
-      })),
+      }));
+
+    if (periodDays > PAID_PARTNERSHIP_REFRESH_DAYS && userId) {
+      const stored = await this.storage.getStoredPaidPartnershipTweets(
+        userId,
+        new Date(periodCutoff),
+        new Date(refreshCutoff),
+      );
+      tweets.push(
+        ...stored.map((tweet) => ({
+          id: tweet.id,
+          authorId: tweet.authorId,
+          authorUsername: tweet.authorUsername,
+          text: tweet.text,
+          createdAt: tweet.tweetCreatedAt?.toISOString() ?? null,
+        })),
+      );
+    }
+
+    tweets.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+
+    return {
+      username,
+      period,
+      count: tweets.length,
+      tweets,
     };
   }
 
