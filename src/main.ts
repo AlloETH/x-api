@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
 import { RapidApiExceptionFilter } from './common/filters/rapidapi-exception.filter';
@@ -73,6 +74,15 @@ async function bootstrap() {
     autoTagControllers: false,
   });
   SwaggerModule.setup('docs', app, document);
+
+  app.use(
+    '/reference',
+    apiReference({
+      content: document,
+      pageTitle: 'Twitter API47 NestJS Wrapper - API Reference',
+      theme: 'deepSpace',
+    }),
+  );
 
   const configService = app.get<ConfigService<AppConfig, true>>(ConfigService);
   await app.listen(configService.get('port', { infer: true }));
