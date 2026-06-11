@@ -5,7 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
-import { RapidApiExceptionFilter } from './common/filters/rapidapi-exception.filter';
+import { UpstreamExceptionFilter } from './common/filters/upstream-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,18 +17,18 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  app.useGlobalFilters(new RapidApiExceptionFilter());
+  app.useGlobalFilters(new UpstreamExceptionFilter());
 
   const config = new DocumentBuilder()
-    .setTitle('Twitter API47 NestJS Wrapper')
+    .setTitle('X (Twitter) Data API')
     .setDescription(
       [
-        'A NestJS wrapper around the [Twitter API47](https://rapidapi.com/restocked-gAGxip8a_/api/twitter-api47) RapidAPI service.',
+        'A NestJS wrapper around an upstream X (Twitter) data API.',
         '',
         'Every route under `/twitter/v3/...` is a thin 1:1 proxy to the ' +
           'matching upstream `/v3/...` endpoint: query parameters are ' +
           'forwarded verbatim and the upstream JSON response is returned ' +
-          'unchanged. RapidAPI authentication, error translation and rate ' +
+          'unchanged. Upstream authentication, error translation and rate ' +
           'limiting are handled centrally - see "Errors" below.',
         '',
         'The **Analytics** endpoints (`smart-followers`, ' +
@@ -49,9 +49,9 @@ async function bootstrap() {
         '',
         '- `400` - request validation failed (locally or upstream)',
         '- `429` - rate limited, either by this server or by the upstream ' +
-          "RapidAPI plan's quota",
+          "API plan's quota",
         '- `502` - the upstream request failed for another reason (e.g. ' +
-          'invalid RapidAPI credentials)',
+          'invalid upstream API credentials)',
         '',
         'See each endpoint for example error bodies.',
       ].join('\n'),
@@ -79,7 +79,7 @@ async function bootstrap() {
     '/docs',
     apiReference({
       content: document,
-      pageTitle: 'Twitter API47 NestJS Wrapper - API Reference',
+      pageTitle: 'X (Twitter) Data API - Reference',
       theme: 'deepSpace',
     }),
   );

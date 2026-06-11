@@ -10,12 +10,12 @@ import { Response } from 'express';
 import { AxiosError } from 'axios';
 
 /**
- * Translates errors raised by the upstream Twitter API47 (RapidAPI) service
- * into NestJS HTTP exceptions with a consistent error shape.
+ * Translates errors raised by the upstream API into NestJS HTTP exceptions
+ * with a consistent error shape.
  */
 @Catch(AxiosError, HttpException)
-export class RapidApiExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(RapidApiExceptionFilter.name);
+export class UpstreamExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(UpstreamExceptionFilter.name);
 
   catch(exception: AxiosError | HttpException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -40,12 +40,12 @@ export class RapidApiExceptionFilter implements ExceptionFilter {
       exception.message;
 
     this.logger.error(
-      `Upstream Twitter API47 request failed: ${status} ${upstreamMessage}`,
+      `Upstream API request failed: ${status} ${upstreamMessage}`,
     );
 
     response.status(this.mapStatus(status)).json({
       statusCode: this.mapStatus(status),
-      message: 'Twitter API47 upstream request failed',
+      message: 'Upstream API request failed',
       upstreamStatus: status,
       upstreamMessage,
     });

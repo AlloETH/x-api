@@ -59,7 +59,7 @@ describe('twitter-data.util', () => {
       });
     });
 
-    it('extracts a flat user object using the confirmed Twitter API47 field names', () => {
+    it('extracts a flat user object using the confirmed upstream API field names', () => {
       const response = {
         data: {
           user: {
@@ -181,7 +181,7 @@ describe('twitter-data.util', () => {
       });
     });
 
-    it('maps the confirmed Twitter API47 flat user shape', () => {
+    it('maps the confirmed upstream API flat user shape', () => {
       const user = toExtractedUser({
         id: '123',
         username: 'someone',

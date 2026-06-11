@@ -4,8 +4,8 @@
  *
  * The shapes used here for `user/by-username`, `user/by-id`, `user/tweets`,
  * `user/tweets-and-replies` and `user/followers` are confirmed against the
- * live upstream Twitter API47 (see README "How the endpoint list was
- * obtained" / `twitter-data.util.ts`). Endpoints whose shape hasn't been
+ * live upstream API (see README "How the endpoint list was obtained" /
+ * `twitter-data.util.ts`). Endpoints whose shape hasn't been
  * confirmed (e.g. `user/by-ids`, `tweet/*`, `search`, `community/*`,
  * `list/*`, `space/by-id`) are documented as raw passthroughs without a
  * fabricated example.

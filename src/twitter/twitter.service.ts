@@ -39,7 +39,7 @@ const PAID_PARTNERSHIP_REFRESH_DAYS = 7;
 const PAID_PARTNERSHIP_MAX_PAGES = 10;
 
 /**
- * Thin 1:1 wrapper around the Twitter API47 (RapidAPI) `/v3` endpoints.
+ * Thin 1:1 wrapper around the upstream API's `/v3` endpoints.
  *
  * Every method forwards the given query params verbatim to the matching
  * upstream endpoint (see `twitter-endpoints.constant.ts`), so any parameter

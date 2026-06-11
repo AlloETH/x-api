@@ -1,8 +1,8 @@
 /**
  * Helpers for pulling user/tweet records out of the JSON returned by the
- * upstream Twitter API47 endpoints, and for deriving the "smart followers" /
- * "paid partnership" / "influence score" features that the upstream API
- * doesn't expose directly.
+ * upstream API endpoints, and for deriving the "smart followers" / "paid
+ * partnership" / "influence score" features that the upstream API doesn't
+ * expose directly.
  *
  * Confirmed against a live key, `/v3/user/by-username`, `/v3/user/followers`
  * and `/v3/user/tweets` return a flat shape: users have `id`, `username`,

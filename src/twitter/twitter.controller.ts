@@ -19,12 +19,12 @@ import {
 } from './swagger/response-examples.constant';
 
 const RAW_PASSTHROUGH_DESCRIPTION =
-  'Raw passthrough of the upstream Twitter API47 JSON response - the exact ' +
-  "shape hasn't been confirmed against the live API for this endpoint (see " +
+  "Raw passthrough of the upstream API's JSON response - the exact shape " +
+  "hasn't been confirmed against the live API for this endpoint (see " +
   'README), so no example is given here.';
 
 /**
- * Routes mirror the upstream Twitter API47 `/v3/...` paths 1:1 (mounted
+ * Routes mirror the upstream API's `/v3/...` paths 1:1 (mounted
  * under `/twitter`), so `GET /twitter/v3/user/by-username?username=elonmusk`
  * proxies directly to `GET /v3/user/by-username?username=elonmusk` upstream.
  *
@@ -51,8 +51,7 @@ export class TwitterController {
   @ApiOperation({ summary: "Get a user's profile by username" })
   @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
   @ApiOkResponse({
-    description:
-      "The user's profile, as returned by the upstream Twitter API47.",
+    description: "The user's profile, as returned by the upstream API.",
     schema: { example: USER_RESPONSE_EXAMPLE },
   })
   getUserByUsername(
@@ -66,8 +65,7 @@ export class TwitterController {
   @ApiOperation({ summary: "Get a user's profile by numeric user ID" })
   @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiOkResponse({
-    description:
-      "The user's profile, as returned by the upstream Twitter API47.",
+    description: "The user's profile, as returned by the upstream API.",
     schema: { example: USER_RESPONSE_EXAMPLE },
   })
   getUserById(
@@ -101,7 +99,7 @@ export class TwitterController {
   @ApiOkResponse({
     description:
       "The user's tweets, newest first, as returned by the upstream " +
-      'Twitter API47. Also persisted to the database (see README).',
+      'API. Also persisted to the database (see README).',
     schema: { example: TWEETS_RESPONSE_EXAMPLE },
   })
   getUserTweets(
@@ -118,7 +116,7 @@ export class TwitterController {
   @ApiOkResponse({
     description:
       "The user's tweets and replies, newest first, as returned by the " +
-      'upstream Twitter API47. Also persisted to the database (see README).',
+      'upstream API. Also persisted to the database (see README).',
     schema: { example: TWEETS_RESPONSE_EXAMPLE },
   })
   getUserTweetsAndReplies(
@@ -133,8 +131,7 @@ export class TwitterController {
   @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({
-    description:
-      "The user's followers, as returned by the upstream Twitter API47.",
+    description: "The user's followers, as returned by the upstream API.",
     schema: { example: FOLLOWERS_RESPONSE_EXAMPLE },
   })
   getUserFollowers(
@@ -162,9 +159,9 @@ export class TwitterController {
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({
     description:
-      'The accounts the user follows, as returned by the upstream Twitter ' +
-      'API47. The exact shape is presumed (but not independently confirmed) ' +
-      'to mirror `user/followers`.',
+      'The accounts the user follows, as returned by the upstream API. ' +
+      'The exact shape is presumed (but not independently confirmed) to ' +
+      'mirror `user/followers`.',
     schema: { example: FOLLOWING_RESPONSE_EXAMPLE },
   })
   getUserFollowing(

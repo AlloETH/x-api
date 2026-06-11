@@ -1,15 +1,15 @@
-# x-api — Twitter API47 NestJS Wrapper
+# x-api — X (Twitter) Data API
 
-A NestJS wrapper around the [Twitter API47](https://rapidapi.com/restocked-gAGxip8a_/api/twitter-api47)
-RapidAPI service. Every route is a thin 1:1 proxy to the upstream `/v3/...`
-endpoint, mounted under `/twitter`, with RapidAPI authentication, error
-translation, rate limiting and Swagger docs handled centrally.
+A NestJS wrapper around an upstream X (Twitter) data API. Every route is a
+thin 1:1 proxy to the upstream `/v3/...` endpoint, mounted under `/twitter`,
+with upstream authentication, error translation, rate limiting and API docs
+handled centrally.
 
 ## How the endpoint list was obtained
 
-RapidAPI's marketplace page is a JS-rendered SPA, so the endpoint catalog
-isn't scrapeable directly. Instead, the full set of valid `/v3/...` routes
-was discovered empirically against the live gateway:
+The upstream provider's marketplace page is a JS-rendered SPA, so the
+endpoint catalog isn't scrapeable directly. Instead, the full set of valid
+`/v3/...` routes was discovered empirically against the live gateway:
 
 - An **unknown path** returns `404 {"message":"Endpoint '<path>' does not exist"}`.
 - A **valid path** returns `429 {"message":"...MONTHLY quota..."}` (when the
@@ -18,9 +18,9 @@ was discovered empirically against the live gateway:
   a missing required parameter), regardless of which other params are passed.
 
 This was used to enumerate every valid `/v3/...` path, and - using a working
-RapidAPI key - every endpoint's required query parameter names, by reading
-the `VALIDATION_ERROR` responses. All parameter names in the tables below are
-**confirmed** against the live API this way.
+upstream API key - every endpoint's required query parameter names, by
+reading the `VALIDATION_ERROR` responses. All parameter names in the tables
+below are **confirmed** against the live API this way.
 
 Because every route is a verbatim query-param passthrough (see
 [Architecture](#architecture)), you can still pass any extra parameter names
@@ -31,13 +31,13 @@ they will be forwarded unchanged.
 
 - 22 routes covering users, tweets, search, communities, lists and spaces -
   mirroring the upstream `/v3/...` paths 1:1 under `/twitter`.
-- Centralized RapidAPI authentication via `@nestjs/axios` (`x-rapidapi-key` /
-  `x-rapidapi-host` headers configured once for all requests).
+- Centralized upstream API authentication via `@nestjs/axios` (auth headers
+  configured once for all requests).
 - All query parameters are forwarded to the upstream endpoint verbatim.
 - Upstream error translation into consistent JSON error responses
-  (`RapidApiExceptionFilter`).
+  (`UpstreamExceptionFilter`).
 - Built-in rate limiting (`@nestjs/throttler`) to help stay within your
-  RapidAPI plan's quota.
+  upstream API plan's quota.
 - **Persistence**: user profiles and tweets fetched through the API are
   stored in a PostgreSQL database via TypeORM (see
   [Database & persistence](#database--persistence)).
@@ -138,13 +138,13 @@ It's grouped into **Users**, **Analytics**, **Tweets**, **Search**,
 | Status | When                                                                 | Shape |
 | ------ | -------------------------------------------------------------------- | ----- |
 | `400`  | This server's `ValidationPipe` rejected the request (e.g. an unknown query parameter), or a route-specific check (e.g. an invalid `period`) failed | `{ "statusCode": 400, "message": "...", "error": "Bad Request" }` |
-| `400`  | The upstream Twitter API47 rejected the request as invalid             | `{ "statusCode": 400, "message": "Twitter API47 upstream request failed", "upstreamStatus": 400, "upstreamMessage": "..." }` |
+| `400`  | The upstream API rejected the request as invalid                       | `{ "statusCode": 400, "message": "Upstream API request failed", "upstreamStatus": 400, "upstreamMessage": "..." }` |
 | `429`  | This server's own rate limit (`THROTTLE_TTL`/`THROTTLE_LIMIT`) was exceeded | `{ "statusCode": 429, "message": "ThrottlerException: Too Many Requests" }` |
-| `429`  | The upstream RapidAPI plan's monthly quota was exhausted                | `{ "statusCode": 429, "message": "Twitter API47 upstream request failed", "upstreamStatus": 429, "upstreamMessage": "...MONTHLY quota..." }` |
-| `502`  | The upstream request failed for any other reason (e.g. invalid/expired RapidAPI credentials) | `{ "statusCode": 502, "message": "Twitter API47 upstream request failed", "upstreamStatus": <code>, "upstreamMessage": "..." }` |
+| `429`  | The upstream API plan's monthly quota was exhausted                    | `{ "statusCode": 429, "message": "Upstream API request failed", "upstreamStatus": 429, "upstreamMessage": "...MONTHLY quota..." }` |
+| `502`  | The upstream request failed for any other reason (e.g. invalid/expired upstream API credentials) | `{ "statusCode": 502, "message": "Upstream API request failed", "upstreamStatus": <code>, "upstreamMessage": "..." }` |
 
 All of these are produced centrally by the global `ValidationPipe` and
-`RapidApiExceptionFilter` (`src/common/filters/rapidapi-exception.filter.ts`),
+`UpstreamExceptionFilter` (`src/common/filters/upstream-exception.filter.ts`),
 documented for every route via `ApiUpstreamErrorResponses`
 (`src/common/decorators/api-upstream-response.decorator.ts`).
 
@@ -157,7 +157,7 @@ For example:
 ```
 GET /twitter/v3/user/by-username?username=elonmusk
   -> proxies to
-GET https://twitter-api47.p.rapidapi.com/v3/user/by-username?username=elonmusk
+GET <RAPIDAPI_BASE_URL>/v3/user/by-username?username=elonmusk
 ```
 
 ### Users
@@ -261,7 +261,7 @@ never breaks the proxied API response.
 
 ## Smart followers, paid partnerships & stats
 
-The upstream Twitter API47 has **no endpoints** for "smart followers",
+The upstream API has **no endpoints** for "smart followers",
 "paid partnership" posts, or influence scoring (inspired by
 [app.sorsa.io](https://app.sorsa.io)'s profile dashboard). These are computed
 locally on top of the existing `/v3/user/followers` and `/v3/user/tweets`
@@ -304,7 +304,7 @@ both derived endpoints accept either `username` or `userId` and resolve a
 
 The user/tweet extraction (`isUserLike` / `isTweetLike` /
 `toExtractedUser` / `toExtractedTweet`) recognizes the confirmed flat
-Twitter API47 shape (`id`, `username`, `followerCount`, `followingCount`,
+upstream API shape (`id`, `username`, `followerCount`, `followingCount`,
 `tweetCount`, `verified`, `isBlueVerified` for users; `id`, `text`,
 `isPaidPromotion`, a nested `author` for tweets), with the legacy
 GraphQL-style field names (`screen_name`, `followers_count`, etc.) kept as

@@ -8,13 +8,13 @@ import { ApiResponse } from '@nestjs/swagger';
  * - `400` - the request failed NestJS's global `ValidationPipe` (e.g. an
  *   unknown query parameter, since `forbidNonWhitelisted` is enabled), a
  *   route-specific validation such as an invalid `period`, or the upstream
- *   Twitter API47 rejected the request as invalid
- *   (`RapidApiExceptionFilter` passthrough).
+ *   API rejected the request as invalid
+ *   (`UpstreamExceptionFilter` passthrough).
  * - `429` - either this server's own rate limit (`ThrottlerGuard`,
  *   configured via `THROTTLE_TTL` / `THROTTLE_LIMIT`) or the upstream
- *   RapidAPI plan's quota has been exhausted.
- * - `502` - the upstream Twitter API47 request failed for any other reason
- *   (including invalid/expired RapidAPI credentials).
+ *   API plan's quota has been exhausted.
+ * - `502` - the upstream API request failed for any other reason
+ *   (including invalid/expired upstream API credentials).
  *
  * Apply once at the controller level so it documents every route in
  * `TwitterController`.
@@ -25,8 +25,8 @@ export function ApiUpstreamErrorResponses() {
       status: 400,
       description:
         'Bad request - either this server rejected the request before it ' +
-        'reached the upstream API, or the upstream Twitter API47 rejected ' +
-        'it as invalid.',
+        'reached the upstream API, or the upstream API rejected it as ' +
+        'invalid.',
       content: {
         'application/json': {
           examples: {
@@ -51,7 +51,7 @@ export function ApiUpstreamErrorResponses() {
               summary: 'Upstream rejected the request as invalid',
               value: {
                 statusCode: 400,
-                message: 'Twitter API47 upstream request failed',
+                message: 'Upstream API request failed',
                 upstreamStatus: 400,
                 upstreamMessage: 'Request failed with status code 400',
               },
@@ -65,7 +65,7 @@ export function ApiUpstreamErrorResponses() {
       description:
         "Too many requests - either this server's own rate limit " +
         '(`THROTTLE_TTL` / `THROTTLE_LIMIT`) was exceeded, or the upstream ' +
-        "RapidAPI plan's monthly quota has been exhausted.",
+        "API plan's monthly quota has been exhausted.",
       content: {
         'application/json': {
           examples: {
@@ -77,10 +77,10 @@ export function ApiUpstreamErrorResponses() {
               },
             },
             upstreamQuota: {
-              summary: "Upstream RapidAPI plan's quota exhausted",
+              summary: "Upstream API plan's quota exhausted",
               value: {
                 statusCode: 429,
-                message: 'Twitter API47 upstream request failed',
+                message: 'Upstream API request failed',
                 upstreamStatus: 429,
                 upstreamMessage:
                   'You have exceeded the MONTHLY quota for Requests on your current plan, BASIC. Upgrade your plan to ' +
@@ -94,14 +94,14 @@ export function ApiUpstreamErrorResponses() {
     ApiResponse({
       status: 502,
       description:
-        'The upstream Twitter API47 request failed for a reason other than ' +
-        'invalid input or rate limiting (e.g. invalid/expired RapidAPI ' +
+        'The upstream API request failed for a reason other than invalid ' +
+        'input or rate limiting (e.g. invalid/expired upstream API ' +
         'credentials, or an unexpected upstream error).',
       content: {
         'application/json': {
           example: {
             statusCode: 502,
-            message: 'Twitter API47 upstream request failed',
+            message: 'Upstream API request failed',
             upstreamStatus: 403,
             upstreamMessage: 'Forbidden',
           },

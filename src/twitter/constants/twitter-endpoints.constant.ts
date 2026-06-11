@@ -1,13 +1,11 @@
 /**
- * Map of Twitter API47 (RapidAPI) upstream endpoint paths.
+ * Map of the upstream API's `/v3/...` endpoint paths.
  *
- * This list was derived empirically: the RapidAPI gateway responds with
+ * This list was derived empirically: the upstream gateway responds with
  * `404 {"message":"Endpoint '<path>' does not exist"}` for unknown paths and
  * `429 {"message":"...MONTHLY quota..."}` for valid ones (independent of
  * query params), which made it possible to enumerate the real `/v3/...`
  * routes exposed by this API without consuming request quota.
- *
- * @see https://rapidapi.com/restocked-gAGxip8a_/api/twitter-api47
  */
 export const TWITTER_ENDPOINTS = {
   // Users
