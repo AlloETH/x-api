@@ -49,7 +49,9 @@ they will be forwarded unchanged.
     as paid partnership / branded content.
   - `GET /twitter/v3/user/stats` - influence score and follower growth since
     the last fetch.
-- OpenAPI/Swagger docs served at `/docs`.
+- OpenAPI/Swagger docs served at `/docs`, with example requests/responses and
+  documented error shapes for every route (see
+  [API documentation](#api-documentation)).
 - Unit tests for the service, storage and controller layers.
 
 ## Getting started
@@ -105,6 +107,39 @@ npm run test       # unit tests
 npm run test:e2e   # end-to-end tests (requires Postgres - see step 2)
 npm run test:cov   # coverage
 ```
+
+## API documentation
+
+Interactive Swagger UI is served at [`/docs`](http://localhost:3000/docs),
+with the raw OpenAPI spec available at `/docs-json` (and `/docs-yaml`). Each
+route documents:
+
+- Its query parameters (confirmed names, plus a note that any extra upstream
+  parameter is forwarded unchanged).
+- An example success response - a real, confirmed response shape for
+  endpoints that have been validated against the live API (see
+  [How the endpoint list was obtained](#how-the-endpoint-list-was-obtained)),
+  or a "raw passthrough, shape not yet confirmed" note otherwise.
+- The error responses every route can return (see
+  [Error responses](#error-responses) below).
+
+It's grouped into **Users**, **Analytics**, **Tweets**, **Search**,
+**Communities**, **Lists** and **Spaces**, matching the sections below.
+
+### Error responses
+
+| Status | When                                                                 | Shape |
+| ------ | -------------------------------------------------------------------- | ----- |
+| `400`  | This server's `ValidationPipe` rejected the request (e.g. an unknown query parameter), or a route-specific check (e.g. an invalid `period`) failed | `{ "statusCode": 400, "message": "...", "error": "Bad Request" }` |
+| `400`  | The upstream Twitter API47 rejected the request as invalid             | `{ "statusCode": 400, "message": "Twitter API47 upstream request failed", "upstreamStatus": 400, "upstreamMessage": "..." }` |
+| `429`  | This server's own rate limit (`THROTTLE_TTL`/`THROTTLE_LIMIT`) was exceeded | `{ "statusCode": 429, "message": "ThrottlerException: Too Many Requests" }` |
+| `429`  | The upstream RapidAPI plan's monthly quota was exhausted                | `{ "statusCode": 429, "message": "Twitter API47 upstream request failed", "upstreamStatus": 429, "upstreamMessage": "...MONTHLY quota..." }` |
+| `502`  | The upstream request failed for any other reason (e.g. invalid/expired RapidAPI credentials) | `{ "statusCode": 502, "message": "Twitter API47 upstream request failed", "upstreamStatus": <code>, "upstreamMessage": "..." }` |
+
+All of these are produced centrally by the global `ValidationPipe` and
+`RapidApiExceptionFilter` (`src/common/filters/rapidapi-exception.filter.ts`),
+documented for every route via `ApiUpstreamErrorResponses`
+(`src/common/decorators/api-upstream-response.decorator.ts`).
 
 ## API Endpoints
 
