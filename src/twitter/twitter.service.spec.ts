@@ -56,25 +56,25 @@ describe('TwitterService', () => {
     expect(storageService.saveUserSnapshots).toHaveBeenCalledWith({ id: '1' });
   });
 
-  it('getUserById forwards the id param', async () => {
+  it('getUserById forwards the userId param', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: '44196397' })));
 
-    await service.getUserById({ id: '44196397' });
+    await service.getUserById({ userId: '44196397' });
 
     expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.USER_BY_ID, {
-      params: { id: '44196397' },
+      params: { userId: '44196397' },
     });
   });
 
   it('getUserTweets forwards an optional cursor and persists fetched tweets', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getUserTweets({ username: 'elonmusk', cursor: 'cursor123' });
+    await service.getUserTweets({ userId: '44196397', cursor: 'cursor123' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.USER_TWEETS,
       {
-        params: { username: 'elonmusk', cursor: 'cursor123' },
+        params: { userId: '44196397', cursor: 'cursor123' },
       },
     );
     expect(storageService.saveTweets).toHaveBeenCalledWith({ tweets: [] });
@@ -84,7 +84,7 @@ describe('TwitterService', () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
     await service.getUserTweets({
-      username: 'elonmusk',
+      userId: '44196397',
       cursor: undefined,
       extra: '',
     });
@@ -92,7 +92,7 @@ describe('TwitterService', () => {
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.USER_TWEETS,
       {
-        params: { username: 'elonmusk' },
+        params: { userId: '44196397' },
       },
     );
   });
@@ -100,35 +100,38 @@ describe('TwitterService', () => {
   it('getTweetDetails calls the tweet details endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: '999' })));
 
-    await service.getTweetDetails({ id: '999' });
+    await service.getTweetDetails({ tweetId: '999' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.TWEET_DETAILS,
       {
-        params: { id: '999' },
+        params: { tweetId: '999' },
       },
     );
   });
 
-  it('search forwards the query param', async () => {
+  it('search forwards the query and type params', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ results: [] })));
 
-    await service.search({ query: 'nestjs' });
+    await service.search({ query: 'nestjs', type: 'Top' });
 
     expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.SEARCH, {
-      params: { query: 'nestjs' },
+      params: { query: 'nestjs', type: 'Top' },
     });
   });
 
   it('getCommunityTweets calls the community tweets endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getCommunityTweets({ id: '123', cursor: 'cursor123' });
+    await service.getCommunityTweets({
+      communityId: '123',
+      cursor: 'cursor123',
+    });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.COMMUNITY_TWEETS,
       {
-        params: { id: '123', cursor: 'cursor123' },
+        params: { communityId: '123', cursor: 'cursor123' },
       },
     );
   });
@@ -136,12 +139,12 @@ describe('TwitterService', () => {
   it('getListTweets calls the list tweets endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ tweets: [] })));
 
-    await service.getListTweets({ id: '456' });
+    await service.getListTweets({ listId: '456' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.LIST_TWEETS,
       {
-        params: { id: '456' },
+        params: { listId: '456' },
       },
     );
   });
@@ -149,41 +152,57 @@ describe('TwitterService', () => {
   it('getSpaceById calls the space endpoint', async () => {
     httpService.get.mockReturnValue(of(mockAxiosResponse({ id: 'abc' })));
 
-    await service.getSpaceById({ id: 'abc' });
+    await service.getSpaceById({ spaceId: 'abc' });
 
     expect(httpService.get).toHaveBeenCalledWith(
       TWITTER_ENDPOINTS.SPACE_BY_ID,
       {
-        params: { id: 'abc' },
+        params: { spaceId: 'abc' },
       },
     );
   });
 
   describe('getSmartFollowers', () => {
-    it('ranks followers by reach/verification, limits results, and persists the ranking', async () => {
+    it('resolves the userId from username, ranks followers by reach/verification, limits results, and persists the ranking', async () => {
+      const profileResponse = {
+        data: {
+          user: {
+            id: '44196397',
+            username: 'elonmusk',
+            followerCount: 200000000,
+            followingCount: 500,
+            tweetCount: 50000,
+            verified: true,
+          },
+        },
+      };
       const followersResponse = {
         data: {
           followers: [
-            { screen_name: 'small_fan', followers_count: 100, verified: false },
-            { screen_name: 'celeb', followers_count: 5000, verified: true },
-            {
-              screen_name: 'big_acct',
-              followers_count: 200000,
-              verified: false,
-            },
+            { username: 'small_fan', followerCount: 100, verified: false },
+            { username: 'celeb', followerCount: 5000, verified: true },
+            { username: 'big_acct', followerCount: 200000, verified: false },
           ],
         },
       };
-      httpService.get.mockReturnValue(of(mockAxiosResponse(followersResponse)));
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(profileResponse)))
+        .mockReturnValueOnce(of(mockAxiosResponse(followersResponse)));
 
       const result = await service.getSmartFollowers({
         username: 'elonmusk',
         limit: '2',
       });
 
-      expect(httpService.get).toHaveBeenCalledWith(
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        1,
+        TWITTER_ENDPOINTS.USER_BY_USERNAME,
         { params: { username: 'elonmusk' } },
+      );
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        2,
+        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        { params: { userId: '44196397' } },
       );
       expect(result).toEqual({
         username: 'elonmusk',
@@ -198,28 +217,74 @@ describe('TwitterService', () => {
         expect.any(Array),
       );
     });
+
+    it('uses a given userId directly without resolving it from username', async () => {
+      const followersResponse = {
+        data: {
+          followers: [
+            { username: 'celeb', followerCount: 5000, verified: true },
+          ],
+        },
+      };
+      httpService.get.mockReturnValueOnce(
+        of(mockAxiosResponse(followersResponse)),
+      );
+
+      await service.getSmartFollowers({ userId: '44196397' });
+
+      expect(httpService.get).toHaveBeenCalledTimes(1);
+      expect(httpService.get).toHaveBeenCalledWith(
+        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        { params: { userId: '44196397' } },
+      );
+    });
   });
 
   describe('getPaidPartnershipTweets', () => {
-    it('returns only tweets flagged as paid partnership and persists all fetched tweets', async () => {
+    it('resolves the userId from username, returns only tweets flagged as paid partnership, and persists all fetched tweets', async () => {
+      const profileResponse = {
+        data: {
+          user: {
+            id: '44196397',
+            username: 'elonmusk',
+            followerCount: 200000000,
+            followingCount: 500,
+            tweetCount: 50000,
+            verified: true,
+          },
+        },
+      };
       const tweetsResponse = {
         data: {
           tweets: [
-            { id_str: '1', full_text: 'just a normal tweet' },
+            { id: '1', text: 'just a normal tweet', isPaidPromotion: false },
             {
-              id_str: '2',
-              full_text: 'Paid partnership with Acme',
-              user: { screen_name: 'elonmusk' },
+              id: '2',
+              text: 'Check out this product',
+              isPaidPromotion: true,
+              author: { id: '44196397', username: 'elonmusk' },
             },
           ],
         },
       };
-      httpService.get.mockReturnValue(of(mockAxiosResponse(tweetsResponse)));
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(profileResponse)))
+        .mockReturnValueOnce(of(mockAxiosResponse(tweetsResponse)));
 
       const result = await service.getPaidPartnershipTweets({
         username: 'elonmusk',
       });
 
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        1,
+        TWITTER_ENDPOINTS.USER_BY_USERNAME,
+        { params: { username: 'elonmusk' } },
+      );
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        2,
+        TWITTER_ENDPOINTS.USER_TWEETS,
+        { params: { userId: '44196397' } },
+      );
       expect(storageService.saveTweets).toHaveBeenCalledWith(tweetsResponse);
       expect(result).toEqual({
         username: 'elonmusk',
@@ -227,9 +292,9 @@ describe('TwitterService', () => {
         tweets: [
           {
             id: '2',
-            authorId: null,
+            authorId: '44196397',
             authorUsername: 'elonmusk',
-            text: 'Paid partnership with Acme',
+            text: 'Check out this product',
           },
         ],
       });

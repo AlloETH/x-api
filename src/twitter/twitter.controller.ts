@@ -9,9 +9,8 @@ import { TwitterApiResponse } from './interfaces/twitter-api-response.interface'
  * proxies directly to `GET /v3/user/by-username?username=elonmusk` upstream.
  *
  * All query parameters are forwarded to the upstream API verbatim. The
- * `@ApiQuery` annotations document the parameter names we could confirm or
- * infer; verify against your RapidAPI dashboard/playground if a value
- * doesn't behave as expected and pass whatever params the upstream expects -
+ * `@ApiQuery` annotations document the parameter names confirmed against the
+ * live API's validation errors; pass whatever params the upstream expects -
  * they will be forwarded unchanged.
  */
 @ApiTags('twitter')
@@ -34,7 +33,7 @@ export class TwitterController {
 
   @Get('v3/user/by-id')
   @ApiOperation({ summary: "Get a user's profile by numeric user ID" })
-  @ApiQuery({ name: 'id', required: false, example: '44196397' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   getUserById(
     @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
@@ -46,8 +45,8 @@ export class TwitterController {
     summary: 'Batch lookup of user profiles by numeric user IDs',
   })
   @ApiQuery({
-    name: 'ids',
-    required: false,
+    name: 'userIds',
+    required: true,
     description: 'Comma-separated user IDs',
   })
   getUsersByIds(
@@ -58,7 +57,7 @@ export class TwitterController {
 
   @Get('v3/user/tweets')
   @ApiOperation({ summary: "Get a user's tweets" })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserTweets(
     @Query() query: Record<string, string>,
@@ -68,7 +67,7 @@ export class TwitterController {
 
   @Get('v3/user/tweets-and-replies')
   @ApiOperation({ summary: "Get a user's tweets and replies" })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserTweetsAndReplies(
     @Query() query: Record<string, string>,
@@ -78,7 +77,7 @@ export class TwitterController {
 
   @Get('v3/user/followers')
   @ApiOperation({ summary: "Get a user's followers" })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserFollowers(
     @Query() query: Record<string, string>,
@@ -88,7 +87,7 @@ export class TwitterController {
 
   @Get('v3/user/followers-ids')
   @ApiOperation({ summary: "Get the numeric IDs of a user's followers" })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserFollowersIds(
     @Query() query: Record<string, string>,
@@ -98,7 +97,7 @@ export class TwitterController {
 
   @Get('v3/user/following')
   @ApiOperation({ summary: 'Get the accounts a user follows' })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserFollowing(
     @Query() query: Record<string, string>,
@@ -108,7 +107,7 @@ export class TwitterController {
 
   @Get('v3/user/following-ids')
   @ApiOperation({ summary: 'Get the numeric IDs of accounts a user follows' })
-  @ApiQuery({ name: 'username', required: false, example: 'elonmusk' })
+  @ApiQuery({ name: 'userId', required: true, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getUserFollowingIds(
     @Query() query: Record<string, string>,
@@ -125,7 +124,13 @@ export class TwitterController {
     summary:
       "Get a user's 'smart' followers - followers ranked by reach and verification",
   })
-  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
+  @ApiQuery({
+    name: 'username',
+    required: false,
+    example: 'elonmusk',
+    description: 'Either username or userId is required',
+  })
+  @ApiQuery({ name: 'userId', required: false, example: '44196397' })
   @ApiQuery({
     name: 'limit',
     required: false,
@@ -143,7 +148,13 @@ export class TwitterController {
     summary:
       "Get a user's tweets flagged as paid partnership / branded content",
   })
-  @ApiQuery({ name: 'username', required: true, example: 'elonmusk' })
+  @ApiQuery({
+    name: 'username',
+    required: false,
+    example: 'elonmusk',
+    description: 'Either username or userId is required',
+  })
+  @ApiQuery({ name: 'userId', required: false, example: '44196397' })
   @ApiQuery({ name: 'cursor', required: false })
   getPaidPartnershipTweets(
     @Query() query: Record<string, string>,
@@ -169,7 +180,7 @@ export class TwitterController {
 
   @Get('v3/tweet/details')
   @ApiOperation({ summary: "Get a tweet's details" })
-  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'tweetId', required: true, example: '1881854756446003222' })
   @ApiQuery({ name: 'cursor', required: false })
   getTweetDetails(
     @Query() query: Record<string, string>,
@@ -179,7 +190,7 @@ export class TwitterController {
 
   @Get('v3/tweet/retweets')
   @ApiOperation({ summary: 'Get the users who retweeted a tweet' })
-  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'tweetId', required: true, example: '1881854756446003222' })
   @ApiQuery({ name: 'cursor', required: false })
   getTweetRetweets(
     @Query() query: Record<string, string>,
@@ -189,7 +200,7 @@ export class TwitterController {
 
   @Get('v3/tweet/quotes')
   @ApiOperation({ summary: 'Get the quote tweets of a tweet' })
-  @ApiQuery({ name: 'id', required: false, example: '1881854756446003222' })
+  @ApiQuery({ name: 'tweetId', required: true, example: '1881854756446003222' })
   @ApiQuery({ name: 'cursor', required: false })
   getTweetQuotes(
     @Query() query: Record<string, string>,
@@ -203,7 +214,12 @@ export class TwitterController {
 
   @Get('v3/search')
   @ApiOperation({ summary: 'Search tweets/users' })
-  @ApiQuery({ name: 'query', required: false, example: 'nestjs' })
+  @ApiQuery({ name: 'query', required: true, example: 'nestjs' })
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    description: 'e.g. "Top", "Latest", "People"',
+  })
   @ApiQuery({ name: 'cursor', required: false })
   search(@Query() query: Record<string, string>): Promise<TwitterApiResponse> {
     return this.twitterService.search(query);
@@ -215,7 +231,11 @@ export class TwitterController {
 
   @Get('v3/community/details')
   @ApiOperation({ summary: 'Get details about a Twitter Community' })
-  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  @ApiQuery({
+    name: 'communityId',
+    required: true,
+    example: '1493446837214187523',
+  })
   getCommunityDetails(
     @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
@@ -224,7 +244,11 @@ export class TwitterController {
 
   @Get('v3/community/tweets')
   @ApiOperation({ summary: "Get a Community's tweet timeline" })
-  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  @ApiQuery({
+    name: 'communityId',
+    required: true,
+    example: '1493446837214187523',
+  })
   @ApiQuery({ name: 'cursor', required: false })
   getCommunityTweets(
     @Query() query: Record<string, string>,
@@ -234,7 +258,11 @@ export class TwitterController {
 
   @Get('v3/community/members')
   @ApiOperation({ summary: "Get a Community's members" })
-  @ApiQuery({ name: 'id', required: false, example: '1493446837214187523' })
+  @ApiQuery({
+    name: 'communityId',
+    required: true,
+    example: '1493446837214187523',
+  })
   @ApiQuery({ name: 'cursor', required: false })
   getCommunityMembers(
     @Query() query: Record<string, string>,
@@ -244,7 +272,7 @@ export class TwitterController {
 
   @Get('v3/community/search')
   @ApiOperation({ summary: 'Search Twitter Communities' })
-  @ApiQuery({ name: 'query', required: false })
+  @ApiQuery({ name: 'query', required: true })
   @ApiQuery({ name: 'cursor', required: false })
   searchCommunities(
     @Query() query: Record<string, string>,
@@ -258,7 +286,7 @@ export class TwitterController {
 
   @Get('v3/list/tweets')
   @ApiOperation({ summary: "Get a List's tweet timeline" })
-  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'listId', required: true, example: '1234567890' })
   @ApiQuery({ name: 'cursor', required: false })
   getListTweets(
     @Query() query: Record<string, string>,
@@ -268,7 +296,7 @@ export class TwitterController {
 
   @Get('v3/list/members')
   @ApiOperation({ summary: "Get a List's members" })
-  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'listId', required: true, example: '1234567890' })
   @ApiQuery({ name: 'cursor', required: false })
   getListMembers(
     @Query() query: Record<string, string>,
@@ -278,7 +306,7 @@ export class TwitterController {
 
   @Get('v3/list/details')
   @ApiOperation({ summary: 'Get details about a List' })
-  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'listId', required: true, example: '1234567890' })
   getListDetails(
     @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {
@@ -287,7 +315,7 @@ export class TwitterController {
 
   @Get('v3/list/followers')
   @ApiOperation({ summary: "Get a List's followers" })
-  @ApiQuery({ name: 'id', required: false, example: '1234567890' })
+  @ApiQuery({ name: 'listId', required: true, example: '1234567890' })
   @ApiQuery({ name: 'cursor', required: false })
   getListFollowers(
     @Query() query: Record<string, string>,
@@ -301,7 +329,7 @@ export class TwitterController {
 
   @Get('v3/space/by-id')
   @ApiOperation({ summary: 'Get details about a Twitter Space' })
-  @ApiQuery({ name: 'id', required: false, example: '1RDxlgyZbnAJL' })
+  @ApiQuery({ name: 'spaceId', required: true, example: '1RDxlgyZbnAJL' })
   getSpaceById(
     @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {

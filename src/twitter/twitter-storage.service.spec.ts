@@ -143,6 +143,32 @@ describe('TwitterStorageService', () => {
 
       expect(tweetRepo.save).not.toHaveBeenCalled();
     });
+
+    it('flags paid partnerships using the confirmed isPaidPromotion field', async () => {
+      const response = {
+        data: {
+          tweets: [
+            {
+              id: '3',
+              text: 'Check out this product',
+              isPaidPromotion: true,
+              author: { id: '44196397', username: 'elonmusk' },
+            },
+          ],
+        },
+      };
+
+      await service.saveTweets(response);
+
+      expect(tweetRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: '3',
+          authorId: '44196397',
+          authorUsername: 'elonmusk',
+          isPaidPartnership: true,
+        }),
+      ]);
+    });
   });
 
   describe('saveSmartFollowers', () => {

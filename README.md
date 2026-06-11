@@ -12,21 +12,20 @@ isn't scrapeable directly. Instead, the full set of valid `/v3/...` routes
 was discovered empirically against the live gateway:
 
 - An **unknown path** returns `404 {"message":"Endpoint '<path>' does not exist"}`.
-- A **valid path** returns `429 {"message":"...MONTHLY quota..."}` (the
-  account's quota was already exhausted), regardless of query params.
+- A **valid path** returns `429 {"message":"...MONTHLY quota..."}` (when the
+  account's quota is exhausted), or `400 {"error":{"code":"VALIDATION_ERROR",
+  "message":"Required - query,<param>"}}` (when called with a working key but
+  a missing required parameter), regardless of which other params are passed.
 
-This 404-vs-429 signal was used to enumerate every valid `/v3/...` path
-without consuming request quota. The **only confirmed query parameter** is
-`username` on `/v3/user/by-username` (from the example request). All other
-parameter names below are best-effort guesses based on naming conventions
-(`by-username` -> `username`, `by-id`/`by-ids` -> `id`/`ids`, list endpoints
--> `cursor`, etc.) and **may need adjustment** once you have a working
-RapidAPI plan to test against.
+This was used to enumerate every valid `/v3/...` path, and - using a working
+RapidAPI key - every endpoint's required query parameter names, by reading
+the `VALIDATION_ERROR` responses. All parameter names in the tables below are
+**confirmed** against the live API this way.
 
 Because every route is a verbatim query-param passthrough (see
-[Architecture](#architecture)), you can pass whatever parameter names the
-upstream actually expects and they will be forwarded unchanged - no code
-changes needed if a guessed name is wrong.
+[Architecture](#architecture)), you can still pass any extra parameter names
+the upstream accepts (e.g. pagination/filter params not listed below) and
+they will be forwarded unchanged.
 
 ## Features
 
@@ -121,17 +120,17 @@ GET https://twitter-api47.p.rapidapi.com/v3/user/by-username?username=elonmusk
 
 ### Users
 
-| Method | Path                                     | Likely params              | Description                                |
+| Method | Path                                     | Params                          | Description                                |
 | ------ | ------------------------------------------ | ----------------------------- | --------------------------------------------- |
-| GET    | `/twitter/v3/user/by-username`              | `username` *(confirmed)*       | Get a user's profile by username               |
-| GET    | `/twitter/v3/user/by-id`                    | `id`                            | Get a user's profile by numeric user ID        |
-| GET    | `/twitter/v3/user/by-ids`                   | `ids` (comma-separated)         | Batch lookup of user profiles by ID            |
-| GET    | `/twitter/v3/user/tweets`                   | `username`, `cursor`            | Get a user's tweets                            |
-| GET    | `/twitter/v3/user/tweets-and-replies`       | `username`, `cursor`            | Get a user's tweets and replies                |
-| GET    | `/twitter/v3/user/followers`                | `username`, `cursor`            | Get a user's followers                         |
-| GET    | `/twitter/v3/user/followers-ids`            | `username`, `cursor`            | Get the numeric IDs of a user's followers      |
-| GET    | `/twitter/v3/user/following`                | `username`, `cursor`            | Get the accounts a user follows                |
-| GET    | `/twitter/v3/user/following-ids`            | `username`, `cursor`            | Get the numeric IDs of accounts a user follows |
+| GET    | `/twitter/v3/user/by-username`              | `username` *(required)*        | Get a user's profile by username               |
+| GET    | `/twitter/v3/user/by-id`                    | `userId` *(required)*           | Get a user's profile by numeric user ID        |
+| GET    | `/twitter/v3/user/by-ids`                   | `userIds` *(required, comma-separated)* | Batch lookup of user profiles by ID    |
+| GET    | `/twitter/v3/user/tweets`                   | `userId` *(required)*, `cursor` | Get a user's tweets                            |
+| GET    | `/twitter/v3/user/tweets-and-replies`       | `userId` *(required)*, `cursor` | Get a user's tweets and replies                |
+| GET    | `/twitter/v3/user/followers`                | `userId` *(required)*, `cursor` | Get a user's followers                         |
+| GET    | `/twitter/v3/user/followers-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of a user's followers      |
+| GET    | `/twitter/v3/user/following`                | `userId` *(required)*, `cursor` | Get the accounts a user follows                |
+| GET    | `/twitter/v3/user/following-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of accounts a user follows |
 
 ### Derived analytics (computed locally)
 
@@ -142,47 +141,47 @@ for how each one is computed.
 
 | Method | Path                                     | Params                          | Description                                          |
 | ------ | ------------------------------------------ | ----------------------------- | ----------------------------------------------------- |
-| GET    | `/twitter/v3/user/smart-followers`          | `username` *(required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
-| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` *(required)*, `cursor` | A user's tweets flagged as paid partnership / branded content |
+| GET    | `/twitter/v3/user/smart-followers`          | `username` or `userId` *(one required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
+| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `cursor` | A user's tweets flagged as paid partnership / branded content |
 | GET    | `/twitter/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
 
 ### Tweets
 
-| Method | Path                          | Likely params     | Description                       |
+| Method | Path                          | Params             | Description                       |
 | ------ | -------------------------------- | -------------------- | ------------------------------------- |
-| GET    | `/twitter/v3/tweet/details`      | `id`, `cursor`        | Get a tweet's details                  |
-| GET    | `/twitter/v3/tweet/retweets`     | `id`, `cursor`        | Get the users who retweeted a tweet    |
-| GET    | `/twitter/v3/tweet/quotes`       | `id`, `cursor`        | Get the quote tweets of a tweet        |
+| GET    | `/twitter/v3/tweet/details`      | `tweetId` *(required)*, `cursor` | Get a tweet's details                  |
+| GET    | `/twitter/v3/tweet/retweets`     | `tweetId` *(required)*, `cursor` | Get the users who retweeted a tweet    |
+| GET    | `/twitter/v3/tweet/quotes`       | `tweetId` *(required)*, `cursor` | Get the quote tweets of a tweet        |
 
 ### Search
 
-| Method | Path              | Likely params       | Description           |
+| Method | Path              | Params               | Description           |
 | ------ | -------------------- | ---------------------- | ------------------------- |
-| GET    | `/twitter/v3/search`  | `query`, `cursor`       | Search tweets/users        |
+| GET    | `/twitter/v3/search`  | `query` *(required)*, `type` *(required, e.g. "Top", "Latest", "People")*, `cursor` | Search tweets/users        |
 
 ### Communities
 
-| Method | Path                              | Likely params     | Description                  |
+| Method | Path                              | Params             | Description                  |
 | ------ | ------------------------------------ | -------------------- | --------------------------------- |
-| GET    | `/twitter/v3/community/details`      | `id`                  | Get details about a Community      |
-| GET    | `/twitter/v3/community/tweets`       | `id`, `cursor`        | Get a Community's tweet timeline   |
-| GET    | `/twitter/v3/community/members`      | `id`, `cursor`        | Get a Community's members          |
-| GET    | `/twitter/v3/community/search`       | `query`, `cursor`     | Search Communities                 |
+| GET    | `/twitter/v3/community/details`      | `communityId` *(required)* | Get details about a Community      |
+| GET    | `/twitter/v3/community/tweets`       | `communityId` *(required)*, `cursor` | Get a Community's tweet timeline   |
+| GET    | `/twitter/v3/community/members`      | `communityId` *(required)*, `cursor` | Get a Community's members          |
+| GET    | `/twitter/v3/community/search`       | `query` *(required)*, `cursor` | Search Communities                 |
 
 ### Lists
 
-| Method | Path                          | Likely params     | Description             |
+| Method | Path                          | Params             | Description             |
 | ------ | -------------------------------- | -------------------- | --------------------------- |
-| GET    | `/twitter/v3/list/tweets`        | `id`, `cursor`        | Get a List's tweet timeline   |
-| GET    | `/twitter/v3/list/members`       | `id`, `cursor`        | Get a List's members          |
-| GET    | `/twitter/v3/list/details`       | `id`                  | Get details about a List      |
-| GET    | `/twitter/v3/list/followers`     | `id`, `cursor`        | Get a List's followers        |
+| GET    | `/twitter/v3/list/tweets`        | `listId` *(required)*, `cursor` | Get a List's tweet timeline   |
+| GET    | `/twitter/v3/list/members`       | `listId` *(required)*, `cursor` | Get a List's members          |
+| GET    | `/twitter/v3/list/details`       | `listId` *(required)* | Get details about a List      |
+| GET    | `/twitter/v3/list/followers`     | `listId` *(required)*, `cursor` | Get a List's followers        |
 
 ### Spaces
 
-| Method | Path                       | Likely params | Description               |
+| Method | Path                       | Params       | Description               |
 | ------ | ----------------------------- | ---------------- | ------------------------------ |
-| GET    | `/twitter/v3/space/by-id`      | `id`              | Get details about a Space        |
+| GET    | `/twitter/v3/space/by-id`      | `spaceId` *(required)* | Get details about a Space        |
 
 ### Health
 
@@ -224,31 +223,38 @@ The upstream Twitter API47 has **no endpoints** for "smart followers",
 "paid partnership" posts, or influence scoring (inspired by
 [app.sorsa.io](https://app.sorsa.io)'s profile dashboard). These are computed
 locally on top of the existing `/v3/user/followers` and `/v3/user/tweets`
-responses by `src/twitter/utils/twitter-data.util.ts`:
+responses by `src/twitter/utils/twitter-data.util.ts`.
+
+`/v3/user/followers` and `/v3/user/tweets` require a numeric `userId`, so
+both derived endpoints accept either `username` or `userId` and resolve a
+`username` to its `userId` via `/v3/user/by-username` first
+(`TwitterService.resolveUserId`).
 
 - **Smart followers** (`/v3/user/smart-followers`): every follower returned
   by `/v3/user/followers` is scored via `smartFollowerScore` - follower count
-  plus a large bonus if the account is verified - then sorted descending and
-  truncated to `limit` (default 25).
+  plus a large bonus if the account is verified (`verified` or
+  `isBlueVerified`) - then sorted descending and truncated to `limit`
+  (default 25).
 - **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): every
   tweet returned by `/v3/user/tweets` is checked by `isPaidPartnershipTweet`,
-  which scans the raw tweet JSON for disclosure-related keywords (`paid
+  which uses the confirmed `isPaidPromotion` boolean returned by the upstream
+  API, falling back to a keyword scan of the raw tweet JSON (`paid
   partnership`, `branded content`, `promoted tweet`, `advertiser`,
-  `sponsorship`).
+  `sponsorship`) for any tweet that doesn't set that field.
 - **Stats** (`/v3/user/stats`): re-fetches the user's profile, computes an
   `influenceScore` (log-scaled reach + follower/following ratio + a
   verification bonus) via `computeInfluenceScore`, and diffs the new
   follower count against the most recent `user_snapshots` row to return
   `followerGrowth`.
 
-Because the upstream response shape couldn't be confirmed against a live,
-non-quota-exhausted key, both the user/tweet extraction (`isUserLike` /
-`isTweetLike`) and the paid-partnership keyword list are **best-effort
-heuristics** that recursively scan the response for objects that look like a
-user/tweet. If real responses don't match (e.g. paid-partnership tweets use a
-different field than the keyword scan expects), adjust
-`src/twitter/utils/twitter-data.util.ts` - the rest of the pipeline (storage,
-controllers) is unaffected.
+The user/tweet extraction (`isUserLike` / `isTweetLike` /
+`toExtractedUser` / `toExtractedTweet`) recognizes the confirmed flat
+Twitter API47 shape (`id`, `username`, `followerCount`, `followingCount`,
+`tweetCount`, `verified`, `isBlueVerified` for users; `id`, `text`,
+`isPaidPromotion`, a nested `author` for tweets), with the legacy
+GraphQL-style field names (`screen_name`, `followers_count`, etc.) kept as
+fallbacks for endpoints whose shape hasn't been confirmed (communities,
+lists, spaces).
 
 ## Project structure
 

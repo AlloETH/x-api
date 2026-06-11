@@ -1,17 +1,19 @@
 /**
- * Helpers for pulling user/tweet records out of the raw, deeply-nested JSON
- * returned by the upstream Twitter API47 endpoints, and for deriving the
- * "smart followers" / "paid partnership" / "influence score" features that
- * the upstream API doesn't expose directly.
+ * Helpers for pulling user/tweet records out of the JSON returned by the
+ * upstream Twitter API47 endpoints, and for deriving the "smart followers" /
+ * "paid partnership" / "influence score" features that the upstream API
+ * doesn't expose directly.
  *
- * The upstream responses mirror Twitter's internal GraphQL shapes, which
- * bury user/tweet objects at varying depths (timeline instructions, entries,
- * itemContent, etc.). Rather than hard-code a path that may not match every
- * endpoint (and may drift), we recursively scan the response for objects
- * that *look like* a user or a tweet based on their fields. If the upstream
- * shape turns out to differ once tested against a live (non-quota-exhausted)
- * key, adjust `isUserLike` / `isTweetLike` below - nothing else needs to
- * change.
+ * Confirmed against a live key, `/v3/user/by-username`, `/v3/user/followers`
+ * and `/v3/user/tweets` return a flat shape: users have `id`, `username`,
+ * `followerCount`, `followingCount`, `tweetCount`, `verified` and
+ * `isBlueVerified`; tweets have `id`, `text`, `isPaidPromotion` and a nested
+ * `author` (itself a user object). Rather than hard-code a path that may not
+ * match every endpoint, we recursively scan the response for objects that
+ * *look like* a user or a tweet based on their fields - `isUserLike` /
+ * `isTweetLike` also accept the legacy GraphQL-style field names
+ * (`screen_name`, `followers_count`, etc.) as a fallback for endpoints whose
+ * shape hasn't been confirmed (communities, lists, spaces).
  */
 
 export interface ExtractedUser {
@@ -53,7 +55,8 @@ function findAll(
 
 function isUserLike(obj: Record<string, unknown>): boolean {
   const username = obj.screen_name ?? obj.username;
-  const followers = obj.followers_count ?? obj.followers ?? obj.sub_count;
+  const followers =
+    obj.followerCount ?? obj.followers_count ?? obj.followers ?? obj.sub_count;
   return typeof username === 'string' && typeof followers === 'number';
 }
 
@@ -74,26 +77,49 @@ export function toExtractedUser(obj: Record<string, unknown>): ExtractedUser {
     id: toStringOrNull(obj.id_str ?? obj.rest_id ?? obj.id),
     username: String(obj.screen_name ?? obj.username),
     followersCount: Number(
-      obj.followers_count ?? obj.followers ?? obj.sub_count ?? 0,
+      obj.followerCount ??
+        obj.followers_count ??
+        obj.followers ??
+        obj.sub_count ??
+        0,
     ),
     followingCount: Number(
-      obj.friends_count ?? obj.following_count ?? obj.following ?? 0,
+      obj.followingCount ??
+        obj.friends_count ??
+        obj.following_count ??
+        obj.following ??
+        0,
     ),
     tweetsCount: Number(
-      obj.statuses_count ?? obj.tweets_count ?? obj.tweet_count ?? 0,
+      obj.tweetCount ??
+        obj.statuses_count ??
+        obj.tweets_count ??
+        obj.tweet_count ??
+        0,
     ),
-    verified: Boolean(obj.verified ?? obj.is_blue_verified ?? obj.isVerified),
+    verified:
+      Boolean(obj.verified) ||
+      Boolean(obj.isBlueVerified ?? obj.is_blue_verified ?? obj.isVerified),
     raw: obj,
   };
 }
 
 /** Maps a raw "tweet-like" object to a normalized shape. */
 export function toExtractedTweet(obj: Record<string, unknown>): ExtractedTweet {
+  const author = obj.author as Record<string, unknown> | undefined;
+  const user = obj.user as Record<string, unknown> | undefined;
   return {
     id: String(obj.id_str ?? obj.rest_id ?? obj.tweet_id ?? obj.id ?? ''),
-    authorId: toStringOrNull(obj.user_id_str ?? obj.user_id ?? null),
+    authorId: toStringOrNull(
+      obj.user_id_str ??
+        obj.user_id ??
+        author?.id ??
+        author?.id_str ??
+        author?.rest_id ??
+        null,
+    ),
     authorUsername: toStringOrNull(
-      (obj.user as Record<string, unknown> | undefined)?.screen_name ?? null,
+      user?.screen_name ?? author?.username ?? author?.screen_name ?? null,
     ),
     text: toStringOrNull(obj.full_text ?? obj.text ?? null),
     raw: obj,
@@ -131,14 +157,15 @@ const PAID_PARTNERSHIP_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Best-effort detection of "Paid partnership" / branded content tweets by
- * scanning the raw tweet JSON for known disclosure indicators. The exact
- * field used by Twitter's GraphQL API for branded-content labels couldn't be
- * confirmed (RapidAPI quota was exhausted during development) - if this
- * misses real paid-partnership tweets, inspect a raw `/v3/user/tweets`
- * response for the actual field name and add a more targeted check above.
+ * Detects "Paid partnership" / branded content tweets. `/v3/user/tweets`
+ * returns a confirmed `isPaidPromotion` boolean for exactly this disclosure;
+ * the keyword scan over the raw tweet JSON is kept as a fallback for any
+ * other field/endpoint that surfaces the same disclosure differently.
  */
 export function isPaidPartnershipTweet(tweet: ExtractedTweet): boolean {
+  if (tweet.raw.isPaidPromotion === true) {
+    return true;
+  }
   const haystack = JSON.stringify(tweet.raw);
   return PAID_PARTNERSHIP_PATTERNS.some((pattern) => pattern.test(haystack));
 }

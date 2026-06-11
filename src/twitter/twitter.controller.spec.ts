@@ -42,18 +42,18 @@ describe('TwitterController', () => {
   it('delegates getUserById to the service with the raw query', async () => {
     service.getUserById.mockResolvedValue({ id: '44196397' });
 
-    await controller.getUserById({ id: '44196397' });
+    await controller.getUserById({ userId: '44196397' });
 
-    expect(service.getUserById).toHaveBeenCalledWith({ id: '44196397' });
+    expect(service.getUserById).toHaveBeenCalledWith({ userId: '44196397' });
   });
 
   it('delegates getUserTweets to the service with the raw query', async () => {
     service.getUserTweets.mockResolvedValue({ tweets: [] });
 
-    await controller.getUserTweets({ username: 'elonmusk', cursor: 'abc' });
+    await controller.getUserTweets({ userId: '44196397', cursor: 'abc' });
 
     expect(service.getUserTweets).toHaveBeenCalledWith({
-      username: 'elonmusk',
+      userId: '44196397',
       cursor: 'abc',
     });
   });
@@ -61,25 +61,28 @@ describe('TwitterController', () => {
   it('delegates getTweetDetails to the service with the raw query', async () => {
     service.getTweetDetails.mockResolvedValue({ id: '999' });
 
-    await controller.getTweetDetails({ id: '999' });
+    await controller.getTweetDetails({ tweetId: '999' });
 
-    expect(service.getTweetDetails).toHaveBeenCalledWith({ id: '999' });
+    expect(service.getTweetDetails).toHaveBeenCalledWith({ tweetId: '999' });
   });
 
   it('delegates search to the service with the raw query', async () => {
     service.search.mockResolvedValue({ results: [] });
 
-    await controller.search({ query: 'nestjs' });
+    await controller.search({ query: 'nestjs', type: 'Top' });
 
-    expect(service.search).toHaveBeenCalledWith({ query: 'nestjs' });
+    expect(service.search).toHaveBeenCalledWith({
+      query: 'nestjs',
+      type: 'Top',
+    });
   });
 
   it('delegates getSpaceById to the service with the raw query', async () => {
     service.getSpaceById.mockResolvedValue({ id: 'abc' });
 
-    await controller.getSpaceById({ id: 'abc' });
+    await controller.getSpaceById({ spaceId: 'abc' });
 
-    expect(service.getSpaceById).toHaveBeenCalledWith({ id: 'abc' });
+    expect(service.getSpaceById).toHaveBeenCalledWith({ spaceId: 'abc' });
   });
 
   it('delegates getSmartFollowers to the service with the raw query', async () => {

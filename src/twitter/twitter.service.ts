@@ -203,14 +203,14 @@ export class TwitterService {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
     const limit = query.limit !== undefined ? Number(query.limit) : 25;
+    const userId = await this.resolveUserId(query);
 
-    const upstreamQuery: TwitterQuery = { ...query };
-    delete upstreamQuery.limit;
-
-    const response = await this.proxy(
-      TWITTER_ENDPOINTS.USER_FOLLOWERS,
-      upstreamQuery,
-    );
+    const response = await this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, {
+      ...query,
+      userId,
+      username: undefined,
+      limit: undefined,
+    });
     const followers = extractUsers(response);
 
     const ranked = followers
@@ -251,8 +251,13 @@ export class TwitterService {
   ): Promise<TwitterApiResponse> {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
+    const userId = await this.resolveUserId(query);
 
-    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
+    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, {
+      ...query,
+      userId,
+      username: undefined,
+    });
     await this.storage.saveTweets(response);
 
     const tweets = extractTweets(response).filter(isPaidPartnershipTweet);
@@ -306,6 +311,26 @@ export class TwitterService {
   // ---------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------
+
+  /**
+   * Resolves the numeric `userId` needed by `/v3/user/followers` and
+   * `/v3/user/tweets`: returns `query.userId` as-is if given, otherwise
+   * looks it up via `/v3/user/by-username` from `query.username`.
+   */
+  private async resolveUserId(
+    query: TwitterQuery,
+  ): Promise<string | undefined> {
+    if (query.userId !== undefined) {
+      return String(query.userId);
+    }
+    if (query.username === undefined) {
+      return undefined;
+    }
+    const profile = await this.proxy(TWITTER_ENDPOINTS.USER_BY_USERNAME, {
+      username: query.username,
+    });
+    return extractUsers(profile)[0]?.id ?? undefined;
+  }
 
   private async proxy(
     endpoint: string,
