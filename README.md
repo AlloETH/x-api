@@ -49,10 +49,9 @@ they will be forwarded unchanged.
     as paid partnership / branded content.
   - `GET /twitter/v3/user/stats` - influence score and follower growth since
     the last fetch.
-- Interactive API docs powered by [Scalar](https://scalar.com) at
-  `/reference` (plus a classic Swagger UI at `/docs`), with example
-  requests/responses and documented error shapes for every route (see
-  [API documentation](#api-documentation)).
+- Interactive API docs powered by [Scalar](https://scalar.com) at `/docs`,
+  with example requests/responses and documented error shapes for every
+  route (see [API documentation](#api-documentation)).
 - Unit tests for the service, storage and controller layers.
 
 ## Getting started
@@ -99,8 +98,7 @@ npm run start:dev
 ```
 
 The API is available at `http://localhost:3000` and interactive API docs at
-`http://localhost:3000/reference` (Scalar) or `http://localhost:3000/docs`
-(Swagger UI).
+`http://localhost:3000/docs`.
 
 ### 5. Run tests
 
@@ -113,12 +111,11 @@ npm run test:cov   # coverage
 ## API documentation
 
 The full OpenAPI spec is generated from the route decorators and served in
-three forms:
+two forms:
 
-- [`/reference`](http://localhost:3000/reference) - a [Scalar](https://scalar.com)
-  API reference with a searchable sidebar, syntax-highlighted examples and a
+- [`/docs`](http://localhost:3000/docs) - a [Scalar](https://scalar.com) API
+  reference with a searchable sidebar, syntax-highlighted examples and a
   built-in "try it out" client.
-- [`/docs`](http://localhost:3000/docs) - the classic Swagger UI.
 - `/docs-json` (and `/docs-yaml`) - the raw OpenAPI spec, e.g. for importing
   into Postman or Insomnia.
 
