@@ -240,6 +240,83 @@ describe('TwitterService', () => {
         { params: { userId: '44196397' } },
       );
     });
+
+    it('paginates through multiple pages of followers via pagination.nextCursor and ranks across all of them', async () => {
+      const page1 = {
+        data: {
+          followers: [
+            { username: 'small_fan', followerCount: 100, verified: false },
+            { username: 'celeb', followerCount: 5000, verified: true },
+          ],
+        },
+        pagination: { nextCursor: 'CURSOR_2' },
+      };
+      const page2 = {
+        data: {
+          followers: [
+            { username: 'big_acct', followerCount: 200000, verified: false },
+          ],
+        },
+      };
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(page1)))
+        .mockReturnValueOnce(of(mockAxiosResponse(page2)));
+
+      const result = await service.getSmartFollowers({
+        userId: '44196397',
+        limit: '2',
+      });
+
+      expect(httpService.get).toHaveBeenCalledTimes(2);
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        1,
+        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        { params: { userId: '44196397' } },
+      );
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        2,
+        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        { params: { userId: '44196397', cursor: 'CURSOR_2' } },
+      );
+      expect(result).toEqual({
+        username: undefined,
+        count: 2,
+        smartFollowers: [
+          expect.objectContaining({ username: 'big_acct', score: 200000 }),
+          expect.objectContaining({ username: 'celeb', score: 105000 }),
+        ],
+      });
+    });
+
+    it('stops paginating after SMART_FOLLOWERS_MAX_PAGES (5) pages even if a nextCursor keeps being returned', async () => {
+      for (let i = 0; i < 5; i++) {
+        httpService.get.mockReturnValueOnce(
+          of(
+            mockAxiosResponse({
+              data: {
+                followers: [
+                  {
+                    username: `follower_${i}`,
+                    followerCount: i,
+                    verified: false,
+                  },
+                ],
+              },
+              pagination: { nextCursor: `CURSOR_${i + 1}` },
+            }),
+          ),
+        );
+      }
+
+      await service.getSmartFollowers({ userId: '44196397' });
+
+      expect(httpService.get).toHaveBeenCalledTimes(5);
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        5,
+        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        { params: { userId: '44196397', cursor: 'CURSOR_4' } },
+      );
+    });
   });
 
   describe('getPaidPartnershipTweets', () => {

@@ -272,11 +272,13 @@ both derived endpoints accept either `username` or `userId` and resolve a
 `username` to its `userId` via `/v3/user/by-username` first
 (`TwitterService.resolveUserId`).
 
-- **Smart followers** (`/v3/user/smart-followers`): every follower returned
-  by `/v3/user/followers` is scored via `smartFollowerScore` - follower count
-  plus a large bonus if the account is verified (`verified` or
-  `isBlueVerified`) - then sorted descending and truncated to `limit`
-  (default 25).
+- **Smart followers** (`/v3/user/smart-followers`): fetches `/v3/user/followers`,
+  paginating via `pagination.nextCursor` for up to `SMART_FOLLOWERS_MAX_PAGES`
+  (5) pages (or until a page comes back empty or without a `nextCursor`).
+  Every follower collected across those pages is scored via
+  `smartFollowerScore` - follower count plus a large bonus if the account is
+  verified (`verified` or `isBlueVerified`) - then sorted descending and
+  truncated to `limit` (default 25).
 - **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): covers a
   configurable lookback `period` - a number followed by `d`/`m`/`y`, e.g.
   `7d`, `30d`, `3m`, `6m`, `1y`, `2y` (default `30d`, see

@@ -7,6 +7,7 @@ import { TwitterStorageService } from './twitter-storage.service';
 import {
   computeInfluenceScore,
   ExtractedTweet,
+  ExtractedUser,
   extractTweets,
   extractUsers,
   isPaidPartnershipTweet,
@@ -37,6 +38,13 @@ const PAID_PARTNERSHIP_REFRESH_DAYS = 7;
  * single request.
  */
 const PAID_PARTNERSHIP_MAX_PAGES = 10;
+
+/**
+ * Hard cap on `/v3/user/followers` pages fetched per `getSmartFollowers`
+ * call, so a high-follower-count account can't exhaust the upstream quota in
+ * a single request.
+ */
+const SMART_FOLLOWERS_MAX_PAGES = 5;
 
 /**
  * Thin 1:1 wrapper around the upstream API's `/v3` endpoints.
@@ -215,10 +223,11 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /**
-   * Fetches a user's followers (`/v3/user/followers`) and ranks them by
-   * `smartFollowerScore` (reach + a verification bonus), returning the
-   * top `limit` (default 25). The ranking is also persisted so it can be
-   * tracked over time.
+   * Fetches a user's followers (`/v3/user/followers`, paginating via
+   * `pagination.nextCursor` up to `SMART_FOLLOWERS_MAX_PAGES` pages) and
+   * ranks them by `smartFollowerScore` (reach + a verification bonus),
+   * returning the top `limit` (default 25). The ranking is also persisted
+   * so it can be tracked over time.
    */
   async getSmartFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
     const username =
@@ -226,13 +235,22 @@ export class TwitterService {
     const limit = query.limit !== undefined ? Number(query.limit) : 25;
     const userId = await this.resolveUserId(query);
 
-    const response = await this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, {
-      ...query,
-      userId,
-      username: undefined,
-      limit: undefined,
-    });
-    const followers = extractUsers(response);
+    let cursor = query.cursor !== undefined ? String(query.cursor) : undefined;
+    const followers: ExtractedUser[] = [];
+
+    for (let page = 0; page < SMART_FOLLOWERS_MAX_PAGES; page++) {
+      const response = await this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, {
+        userId,
+        cursor,
+      });
+      const pageFollowers = extractUsers(response);
+      if (pageFollowers.length === 0) break;
+      followers.push(...pageFollowers);
+
+      const nextCursor: string | undefined = response.pagination?.nextCursor;
+      if (!nextCursor) break;
+      cursor = nextCursor;
+    }
 
     const ranked = followers
       .map((follower) => ({

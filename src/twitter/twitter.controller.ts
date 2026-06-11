@@ -192,11 +192,11 @@ export class TwitterController {
     summary:
       "Get a user's 'smart' followers - followers ranked by reach and verification",
     description:
-      "Fetches the user's followers (`/v3/user/followers`) and ranks them " +
-      'by `followersCount` plus a large bonus if the account is verified, ' +
-      'returning the top `limit` (default 25). The ranking is also ' +
-      'persisted so it can be tracked over time. **Not** a 1:1 upstream ' +
-      'proxy - see README.',
+      "Fetches the user's followers (`/v3/user/followers`, paginating up " +
+      'to 5 pages) and ranks them by `followersCount` plus a large bonus ' +
+      'if the account is verified, returning the top `limit` (default ' +
+      '25). The ranking is also persisted so it can be tracked over time. ' +
+      '**Not** a 1:1 upstream proxy - see README.',
   })
   @ApiQuery({
     name: 'username',
@@ -210,7 +210,13 @@ export class TwitterController {
     required: false,
     description: 'Max number of smart followers to return (default 25)',
   })
-  @ApiQuery({ name: 'cursor', required: false })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description:
+      'Cursor for the first `/v3/user/followers` page to fetch ' +
+      '(subsequent pages, if any, are fetched automatically).',
+  })
   @ApiOkResponse({
     description: "A user's followers ranked by reach + verification.",
     schema: { example: SMART_FOLLOWERS_RESPONSE_EXAMPLE },
