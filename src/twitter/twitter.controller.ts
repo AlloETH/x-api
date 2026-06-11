@@ -147,6 +147,10 @@ export class TwitterController {
   @ApiOperation({
     summary:
       "Get a user's tweets flagged as paid partnership / branded content",
+    description:
+      'Paginates back through up to 30 days of the user’s tweet ' +
+      'timeline (or 10 pages, whichever comes first) and returns only the ' +
+      'ones flagged as paid partnership / branded content.',
   })
   @ApiQuery({
     name: 'username',
@@ -155,7 +159,12 @@ export class TwitterController {
     description: 'Either username or userId is required',
   })
   @ApiQuery({ name: 'userId', required: false, example: '44196397' })
-  @ApiQuery({ name: 'cursor', required: false })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description:
+      'Cursor to start paginating from (defaults to the newest tweets)',
+  })
   getPaidPartnershipTweets(
     @Query() query: Record<string, string>,
   ): Promise<TwitterApiResponse> {

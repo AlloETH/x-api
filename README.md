@@ -142,7 +142,7 @@ for how each one is computed.
 | Method | Path                                     | Params                          | Description                                          |
 | ------ | ------------------------------------------ | ----------------------------- | ----------------------------------------------------- |
 | GET    | `/twitter/v3/user/smart-followers`          | `username` or `userId` *(one required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
-| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `cursor` | A user's tweets flagged as paid partnership / branded content |
+| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `cursor` | A user's tweets flagged as paid partnership / branded content from the last 30 days |
 | GET    | `/twitter/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
 
 ### Tweets
@@ -235,12 +235,18 @@ both derived endpoints accept either `username` or `userId` and resolve a
   plus a large bonus if the account is verified (`verified` or
   `isBlueVerified`) - then sorted descending and truncated to `limit`
   (default 25).
-- **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): every
-  tweet returned by `/v3/user/tweets` is checked by `isPaidPartnershipTweet`,
-  which uses the confirmed `isPaidPromotion` boolean returned by the upstream
-  API, falling back to a keyword scan of the raw tweet JSON (`paid
-  partnership`, `branded content`, `promoted tweet`, `advertiser`,
-  `sponsorship`) for any tweet that doesn't set that field.
+- **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): always
+  covers the **last 30 days** of the user's timeline (`PAID_PARTNERSHIP_LOOKBACK_DAYS`
+  in `twitter.service.ts`), regardless of how many tweets that spans. It
+  paginates through `/v3/user/tweets` via `pagination.nextCursor` (tweets are
+  returned newest-first), stopping as soon as it sees a tweet older than 30
+  days, or after `PAID_PARTNERSHIP_MAX_PAGES` (10) pages, whichever comes
+  first. Every fetched tweet is persisted; each one is checked by
+  `isPaidPartnershipTweet`, which uses the confirmed `isPaidPromotion` boolean
+  returned by the upstream API, falling back to a keyword scan of the raw
+  tweet JSON (`paid partnership`, `branded content`, `promoted tweet`,
+  `advertiser`, `sponsorship`) for any tweet that doesn't set that field. The
+  matching tweets are returned with their `createdAt` timestamp.
 - **Stats** (`/v3/user/stats`): re-fetches the user's profile, computes an
   `influenceScore` (log-scaled reach + follower/following ratio + a
   verification bonus) via `computeInfluenceScore`, and diffs the new

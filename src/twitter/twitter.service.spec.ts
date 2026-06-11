@@ -241,27 +241,37 @@ describe('TwitterService', () => {
   });
 
   describe('getPaidPartnershipTweets', () => {
-    it('resolves the userId from username, returns only tweets flagged as paid partnership, and persists all fetched tweets', async () => {
-      const profileResponse = {
-        data: {
-          user: {
-            id: '44196397',
-            username: 'elonmusk',
-            followerCount: 200000000,
-            followingCount: 500,
-            tweetCount: 50000,
-            verified: true,
-          },
+    const profileResponse = {
+      data: {
+        user: {
+          id: '44196397',
+          username: 'elonmusk',
+          followerCount: 200000000,
+          followingCount: 500,
+          tweetCount: 50000,
+          verified: true,
         },
-      };
+      },
+    };
+    const daysAgo = (days: number) =>
+      new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+    it('resolves the userId from username, returns only tweets flagged as paid partnership, and persists all fetched tweets', async () => {
+      const createdAt2DaysAgo = daysAgo(2);
       const tweetsResponse = {
         data: {
           tweets: [
-            { id: '1', text: 'just a normal tweet', isPaidPromotion: false },
+            {
+              id: '1',
+              text: 'just a normal tweet',
+              isPaidPromotion: false,
+              createdAt: daysAgo(1),
+            },
             {
               id: '2',
               text: 'Check out this product',
               isPaidPromotion: true,
+              createdAt: createdAt2DaysAgo,
               author: { id: '44196397', username: 'elonmusk' },
             },
           ],
@@ -275,6 +285,7 @@ describe('TwitterService', () => {
         username: 'elonmusk',
       });
 
+      expect(httpService.get).toHaveBeenCalledTimes(2);
       expect(httpService.get).toHaveBeenNthCalledWith(
         1,
         TWITTER_ENDPOINTS.USER_BY_USERNAME,
@@ -295,6 +306,74 @@ describe('TwitterService', () => {
             authorId: '44196397',
             authorUsername: 'elonmusk',
             text: 'Check out this product',
+            createdAt: createdAt2DaysAgo,
+          },
+        ],
+      });
+    });
+
+    it('paginates back through the timeline until a tweet older than 30 days is found', async () => {
+      const createdAt2DaysAgo = daysAgo(2);
+      const page1 = {
+        data: [
+          {
+            id: '1',
+            text: 'recent tweet',
+            isPaidPromotion: false,
+            createdAt: daysAgo(1),
+          },
+          {
+            id: '2',
+            text: 'recent paid promo',
+            isPaidPromotion: true,
+            createdAt: createdAt2DaysAgo,
+          },
+        ],
+        pagination: { nextCursor: 'CURSOR_2' },
+      };
+      const page2 = {
+        data: [
+          {
+            id: '3',
+            text: 'old paid promo',
+            isPaidPromotion: true,
+            createdAt: daysAgo(40),
+          },
+        ],
+        pagination: { nextCursor: 'CURSOR_3' },
+      };
+      httpService.get
+        .mockReturnValueOnce(of(mockAxiosResponse(profileResponse)))
+        .mockReturnValueOnce(of(mockAxiosResponse(page1)))
+        .mockReturnValueOnce(of(mockAxiosResponse(page2)));
+
+      const result = await service.getPaidPartnershipTweets({
+        username: 'elonmusk',
+      });
+
+      expect(httpService.get).toHaveBeenCalledTimes(3);
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        2,
+        TWITTER_ENDPOINTS.USER_TWEETS,
+        { params: { userId: '44196397' } },
+      );
+      expect(httpService.get).toHaveBeenNthCalledWith(
+        3,
+        TWITTER_ENDPOINTS.USER_TWEETS,
+        { params: { userId: '44196397', cursor: 'CURSOR_2' } },
+      );
+      // The 40-day-old tweet on page 2 is past the 30-day cutoff, so
+      // pagination stops there and it's excluded from the result.
+      expect(result).toEqual({
+        username: 'elonmusk',
+        count: 1,
+        tweets: [
+          {
+            id: '2',
+            authorId: null,
+            authorUsername: null,
+            text: 'recent paid promo',
+            createdAt: createdAt2DaysAgo,
           },
         ],
       });

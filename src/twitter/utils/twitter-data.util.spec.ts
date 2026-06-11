@@ -114,6 +114,7 @@ describe('twitter-data.util', () => {
           authorId: null,
           authorUsername: 'alice',
           text: 'hello world',
+          createdAt: null,
           raw: response.data.tweets[0],
         },
       ]);
@@ -133,6 +134,7 @@ describe('twitter-data.util', () => {
               id: '111',
               text: 'hello world',
               isPaidPromotion: true,
+              createdAt: '2026-06-10T22:44:30.000Z',
               author: {
                 id: '999',
                 username: 'alice',
@@ -152,6 +154,7 @@ describe('twitter-data.util', () => {
         authorId: '999',
         authorUsername: 'alice',
         text: 'hello world',
+        createdAt: '2026-06-10T22:44:30.000Z',
       });
     });
   });

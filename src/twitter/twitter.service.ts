@@ -6,6 +6,7 @@ import { TwitterApiResponse } from './interfaces/twitter-api-response.interface'
 import { TwitterStorageService } from './twitter-storage.service';
 import {
   computeInfluenceScore,
+  ExtractedTweet,
   extractTweets,
   extractUsers,
   isPaidPartnershipTweet,
@@ -16,6 +17,16 @@ export type TwitterQuery = Record<
   string,
   string | number | boolean | undefined
 >;
+
+/** How far back `getPaidPartnershipTweets` looks for tweets, by default. */
+const PAID_PARTNERSHIP_LOOKBACK_DAYS = 30;
+
+/**
+ * Hard cap on `/v3/user/tweets` pages fetched per `getPaidPartnershipTweets`
+ * call, so a very high-volume account can't exhaust the upstream quota in a
+ * single request.
+ */
+const PAID_PARTNERSHIP_MAX_PAGES = 10;
 
 /**
  * Thin 1:1 wrapper around the Twitter API47 (RapidAPI) `/v3` endpoints.
@@ -241,10 +252,13 @@ export class TwitterService {
   }
 
   /**
-   * Fetches a user's tweets (`/v3/user/tweets`) and returns only the ones
-   * flagged as paid partnership / branded content (see
-   * `isPaidPartnershipTweet`). All fetched tweets are persisted, with the
-   * paid-partnership flag stored alongside each one.
+   * Fetches a user's tweets (`/v3/user/tweets`), paginating back through up
+   * to `PAID_PARTNERSHIP_MAX_PAGES` pages of the timeline (or until a tweet
+   * older than `PAID_PARTNERSHIP_LOOKBACK_DAYS` is reached - tweets are
+   * returned newest-first), and returns only the ones flagged as paid
+   * partnership / branded content (see `isPaidPartnershipTweet`). Every
+   * fetched tweet is persisted, with the paid-partnership flag stored
+   * alongside each one.
    */
   async getPaidPartnershipTweets(
     query: TwitterQuery,
@@ -252,24 +266,49 @@ export class TwitterService {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
     const userId = await this.resolveUserId(query);
+    const cutoff =
+      Date.now() - PAID_PARTNERSHIP_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
 
-    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, {
-      ...query,
-      userId,
-      username: undefined,
-    });
-    await this.storage.saveTweets(response);
+    let cursor = query.cursor !== undefined ? String(query.cursor) : undefined;
+    const tweets: ExtractedTweet[] = [];
 
-    const tweets = extractTweets(response).filter(isPaidPartnershipTweet);
+    for (let page = 0; page < PAID_PARTNERSHIP_MAX_PAGES; page++) {
+      const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, {
+        userId,
+        cursor,
+      });
+      await this.storage.saveTweets(response);
+
+      const pageTweets = extractTweets(response);
+      if (pageTweets.length === 0) break;
+
+      let reachedCutoff = false;
+      for (const tweet of pageTweets) {
+        const createdAt = tweet.createdAt ? Date.parse(tweet.createdAt) : NaN;
+        if (!Number.isNaN(createdAt) && createdAt < cutoff) {
+          reachedCutoff = true;
+          break;
+        }
+        tweets.push(tweet);
+      }
+      if (reachedCutoff) break;
+
+      const nextCursor: string | undefined = response.pagination?.nextCursor;
+      if (!nextCursor) break;
+      cursor = nextCursor;
+    }
+
+    const paidTweets = tweets.filter(isPaidPartnershipTweet);
 
     return {
       username,
-      count: tweets.length,
-      tweets: tweets.map((tweet) => ({
+      count: paidTweets.length,
+      tweets: paidTweets.map((tweet) => ({
         id: tweet.id,
         authorId: tweet.authorId,
         authorUsername: tweet.authorUsername,
         text: tweet.text,
+        createdAt: tweet.createdAt,
       })),
     };
   }

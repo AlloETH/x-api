@@ -31,6 +31,7 @@ export interface ExtractedTweet {
   authorId: string | null;
   authorUsername: string | null;
   text: string | null;
+  createdAt: string | null;
   raw: Record<string, unknown>;
 }
 
@@ -122,6 +123,9 @@ export function toExtractedTweet(obj: Record<string, unknown>): ExtractedTweet {
       user?.screen_name ?? author?.username ?? author?.screen_name ?? null,
     ),
     text: toStringOrNull(obj.full_text ?? obj.text ?? null),
+    createdAt: toStringOrNull(
+      obj.createdAt ?? obj.created_at ?? obj.tweet_created_at ?? null,
+    ),
     raw: obj,
   };
 }
