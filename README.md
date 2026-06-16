@@ -259,6 +259,55 @@ never breaks the proxied API response.
 | `tweets`            | `user/tweets`, `user/tweets-and-replies`, `user/paid-partnership-tweets`  | One row per tweet, upserted by ID (author, text, `tweetCreatedAt`, `isPaidPartnership` flag, raw JSON) - `tweetCreatedAt` lets `paid-partnership-tweets` serve longer `period`s from the database |
 | `smart_followers`   | `user/smart-followers`                                                    | The latest ranked "smart followers" per target account (upserted by target + follower username) |
 
+## InfoFi data (migrated from infoeye)
+
+The user and leaderboard data from the **infoeye** project has been migrated
+into this API. The schema is defined as TypeORM entities under
+`src/infofi/entities/` (created automatically by `synchronize: true`), and the
+data is served read-only under `/infofi`:
+
+| Endpoint                          | Description                                                        |
+| --------------------------------- | ----------------------------------------------------------------- |
+| `GET /infofi/projects`            | All tracked projects                                              |
+| `GET /infofi/platforms`           | All InfoFi platforms                                              |
+| `GET /infofi/users/:identifier`   | An InfoFi user (by Twitter ID or username) + per-platform metrics |
+| `GET /infofi/leaderboards/cookie` | Cookie.fun leaderboard (`projectId`, `periodId`, `language`, `capital`, `limit`, `offset`) |
+| `GET /infofi/leaderboards/kaito`  | Kaito leaderboard (`projectId`, `periodId`, `language`, `limit`, `offset`) |
+| `GET /infofi/leaderboards/wallchain` | Wallchain leaderboard (`epochId`, `limit`, `offset`)          |
+
+Leaderboard rows are enriched with the referenced user's profile from
+`infofi_users` (username, display name, image). The migrated tables are:
+the identity registry (`infofi_users`), per-platform user metrics
+(`kaito_users`, `cookie_users`, `wallchain_users`, `platform_user_metrics`),
+the leaderboards (`cookie_leaderboard`, `cookie_leaderboard_capital`,
+`kaito_leaderboard`, `kaito_leaderboard_history`, `wallchain_leaderboard`)
+and their parents (`projects`, `platforms`, `cookie_periods`, `kaito_periods`,
+`cookie_languages`, `wallchain_epochs`).
+
+> Foreign-key links (`project_id`, `period_id`, `user_id`, …) are modeled as
+> indexed columns **without** database-level FK constraints, so the import is
+> resilient to orphaned rows and insertion order. Auth/admin tables and
+> RLS policies from infoeye are intentionally **not** carried over.
+
+### Running the migration
+
+The one-off ETL (`scripts/migrate-infoeye.ts`) reads from infoeye's Supabase
+Postgres via the REST client (using the **service role** key, which bypasses
+RLS) and bulk-upserts into this project's Postgres in foreign-key order. It is
+idempotent — re-running updates existing rows.
+
+```bash
+# 1. Make sure the target Postgres is up and DATABASE_URL points at it
+docker compose up -d
+
+# 2. Set the source credentials (see .env.example)
+export SUPABASE_URL=https://your-project.supabase.co
+export SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# 3. Run the copy
+npm run migrate:infoeye
+```
+
 ## Smart followers, paid partnerships & stats
 
 The upstream API has **no endpoints** for "smart followers",
@@ -317,7 +366,7 @@ lists, spaces).
 
 ```
 src/
-├── app.module.ts            # Root module (config, throttling, DB, Twitter module)
+├── app.module.ts            # Root module (config, throttling, DB, Twitter + InfoFi modules)
 ├── main.ts                  # Bootstrap, global pipes/filters, Swagger
 ├── config/                   # Environment configuration & validation
 ├── database/
@@ -325,13 +374,23 @@ src/
 ├── common/
 │   ├── filters/               # Upstream error -> HTTP exception translation
 │   └── interceptors/          # Request logging
-└── twitter/
-    ├── twitter.module.ts      # HttpModule + TypeORM feature config
-    ├── twitter.controller.ts  # REST endpoints (1:1 proxy + derived analytics)
-    ├── twitter.service.ts     # Upstream API calls + persistence
-    ├── twitter-storage.service.ts  # Persists user/tweet/follower data
-    ├── constants/              # Upstream endpoint path map
-    ├── entities/               # TypeORM entities (user_snapshots, tweets, smart_followers)
-    ├── utils/                  # Extraction & scoring heuristics
-    └── interfaces/             # Response typings
+├── twitter/
+│   ├── twitter.module.ts      # HttpModule + TypeORM feature config
+│   ├── twitter.controller.ts  # REST endpoints (1:1 proxy + derived analytics)
+│   ├── twitter.service.ts     # Upstream API calls + persistence
+│   ├── twitter-storage.service.ts  # Persists user/tweet/follower data
+│   ├── constants/              # Upstream endpoint path map
+│   ├── entities/               # TypeORM entities (user_snapshots, tweets, smart_followers)
+│   ├── utils/                  # Extraction & scoring heuristics
+│   └── interfaces/             # Response typings
+└── infofi/                    # User & leaderboard data migrated from infoeye
+    ├── infofi.module.ts        # TypeORM feature config
+    ├── infofi.controller.ts    # /infofi read endpoints
+    ├── infofi.service.ts       # Leaderboard queries + user enrichment
+    ├── infofi.datasource.ts    # Standalone DataSource for the ETL script
+    ├── dto/                    # Leaderboard query/pagination DTOs
+    └── entities/               # TypeORM entities (infofi_users, *_leaderboard, …)
+
+scripts/
+└── migrate-infoeye.ts        # One-off ETL: infoeye Supabase -> this Postgres
 ```

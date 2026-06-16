@@ -68,6 +68,10 @@ async function bootstrap() {
     .addTag('Communities', 'Twitter Communities')
     .addTag('Lists', 'Twitter Lists')
     .addTag('Spaces', 'Twitter Spaces')
+    .addTag(
+      'InfoFi',
+      'Users and leaderboards (cookie, kaito, wallchain) migrated from infoeye',
+    )
     .addTag('health', 'Service health check')
     .build();
   const document = SwaggerModule.createDocument(app, config, {

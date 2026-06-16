@@ -15,7 +15,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "migrate:infoeye": "ts-node scripts/migrate-infoeye.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^3.1.3",
@@ -27,7 +28,9 @@
     "@nestjs/throttler": "^6.3.0",
     "@nestjs/typeorm": "^11.0.1",
     "@scalar/nestjs-api-reference": "^1.2.3",
+    "@supabase/supabase-js": "^2.45.0",
     "axios": "^1.7.9",
+    "dotenv": "^16.4.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "joi": "^17.13.3",

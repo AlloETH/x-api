@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { DatabaseModule } from './database/database.module';
+import { InfofiModule } from './infofi/infofi.module';
 import { TwitterModule } from './twitter/twitter.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { TwitterModule } from './twitter/twitter.module';
     }),
     DatabaseModule,
     TwitterModule,
+    InfofiModule,
   ],
   controllers: [AppController],
   providers: [
