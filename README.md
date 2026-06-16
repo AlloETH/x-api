@@ -270,10 +270,41 @@ data is served read-only under `/infofi`:
 | --------------------------------- | ----------------------------------------------------------------- |
 | `GET /infofi/projects`            | All tracked projects                                              |
 | `GET /infofi/platforms`           | All InfoFi platforms                                              |
+| `GET /infofi/periods/cookie`      | Cookie periods (`projectId?`) — source of `periodId`             |
+| `GET /infofi/periods/kaito`       | Kaito periods (`projectId?`) — source of `periodId`              |
+| `GET /infofi/epochs/wallchain`    | Wallchain epochs (`projectId?`) — source of `epochId`            |
 | `GET /infofi/users/:identifier`   | An InfoFi user (by Twitter ID or username) + per-platform metrics |
 | `GET /infofi/leaderboards/cookie` | Cookie.fun leaderboard (`projectId`, `periodId`, `language`, `capital`, `limit`, `offset`) |
 | `GET /infofi/leaderboards/kaito`  | Kaito leaderboard (`projectId`, `periodId`, `language`, `limit`, `offset`) |
 | `GET /infofi/leaderboards/wallchain` | Wallchain leaderboard (`epochId`, `limit`, `offset`)          |
+
+### Finding a leaderboard (getting a `periodId` / `epochId`)
+
+The leaderboard endpoints are filtered by a `periodId` (cookie/kaito) or
+`epochId` (wallchain). Those IDs are discovered, not guessed. Like every
+endpoint, these require the `X-API-Key` header (one of the keys in `API_KEYS`):
+
+```bash
+KEY=your-api-key
+
+# 1. Pick a project
+curl -H "x-api-key: $KEY" https://<host>/infofi/projects            # -> note a project "id"
+
+# 2. List that project's periods (or epochs for wallchain)
+curl -H "x-api-key: $KEY" \
+  "https://<host>/infofi/periods/cookie?projectId=<projectId>"      # -> note a period "id"
+
+# 3. Fetch the ranked leaderboard for that period
+curl -H "x-api-key: $KEY" \
+  "https://<host>/infofi/leaderboards/cookie?periodId=<periodId>&language=en"
+```
+
+`projectId` on the period/epoch endpoints is optional (omit it to list across
+all projects). On the leaderboard endpoints every filter is optional too —
+with no `periodId`/`epochId` you get rows across all periods (rank-ascending),
+which is handy for a quick look but mixes periods together. All of this is
+documented interactively in the Scalar reference at `/docs`, with real example
+IDs pre-filled.
 
 Leaderboard rows are enriched with the referenced user's profile from
 `infofi_users` (username, display name, image). The migrated tables are:

@@ -4,13 +4,16 @@ import { FindOptionsWhere, In, Repository } from 'typeorm';
 import {
   CookieLeaderboardCapitalEntity,
   CookieLeaderboardEntity,
+  CookiePeriodEntity,
   CookieUserEntity,
   InfofiUserEntity,
   KaitoLeaderboardEntity,
+  KaitoPeriodEntity,
   KaitoUserEntity,
   PlatformEntity,
   PlatformUserMetricEntity,
   ProjectEntity,
+  WallchainEpochEntity,
   WallchainLeaderboardEntity,
   WallchainUserEntity,
 } from './entities';
@@ -58,6 +61,12 @@ export class InfofiService {
     private readonly wallchainUsers: Repository<WallchainUserEntity>,
     @InjectRepository(PlatformUserMetricEntity)
     private readonly platformMetrics: Repository<PlatformUserMetricEntity>,
+    @InjectRepository(CookiePeriodEntity)
+    private readonly cookiePeriods: Repository<CookiePeriodEntity>,
+    @InjectRepository(KaitoPeriodEntity)
+    private readonly kaitoPeriods: Repository<KaitoPeriodEntity>,
+    @InjectRepository(WallchainEpochEntity)
+    private readonly wallchainEpochs: Repository<WallchainEpochEntity>,
     @InjectRepository(CookieLeaderboardEntity)
     private readonly cookieBoard: Repository<CookieLeaderboardEntity>,
     @InjectRepository(CookieLeaderboardCapitalEntity)
@@ -74,6 +83,39 @@ export class InfofiService {
 
   listPlatforms(): Promise<PlatformEntity[]> {
     return this.platforms.find({ order: { name: 'ASC' } });
+  }
+
+  /**
+   * Lists cookie.fun periods, optionally scoped to one project. Use the
+   * returned `id` as the `periodId` filter on the cookie leaderboard endpoint.
+   */
+  listCookiePeriods(projectId?: string): Promise<CookiePeriodEntity[]> {
+    return this.cookiePeriods.find({
+      where: projectId ? { projectId } : {},
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Lists Kaito periods, optionally scoped to one project. Use the returned
+   * `id` as the `periodId` filter on the Kaito leaderboard endpoint.
+   */
+  listKaitoPeriods(projectId?: string): Promise<KaitoPeriodEntity[]> {
+    return this.kaitoPeriods.find({
+      where: projectId ? { projectId } : {},
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /**
+   * Lists Wallchain epochs, optionally scoped to one project. Use the returned
+   * `id` as the `epochId` filter on the Wallchain leaderboard endpoint.
+   */
+  listWallchainEpochs(projectId?: string): Promise<WallchainEpochEntity[]> {
+    return this.wallchainEpochs.find({
+      where: projectId ? { projectId } : {},
+      order: { startDate: 'DESC' },
+    });
   }
 
   /**

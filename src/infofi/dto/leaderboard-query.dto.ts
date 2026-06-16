@@ -55,6 +55,19 @@ export class LeaderboardQueryDto {
   offset?: number = 0;
 }
 
+/** Filter for the period/epoch discovery endpoints. */
+export class PeriodQueryDto {
+  @ApiPropertyOptional({
+    description:
+      'Filter periods to a single project (UUID, from `GET /infofi/projects`). ' +
+      'Omit to list periods across all projects.',
+    example: '07572eb2-af9c-4a35-a8f1-27683aa89c6a',
+  })
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+}
+
 /** Cookie leaderboard query, adds the normal-vs-capital table switch. */
 export class CookieLeaderboardQueryDto extends LeaderboardQueryDto {
   @ApiPropertyOptional({
