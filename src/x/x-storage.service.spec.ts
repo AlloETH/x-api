@@ -4,8 +4,8 @@ import { Between } from 'typeorm';
 import { SmartFollowerEntity } from './entities/smart-follower.entity';
 import { TweetEntity } from './entities/tweet.entity';
 import { UserSnapshotEntity } from './entities/user-snapshot.entity';
-import { TwitterStorageService } from './twitter-storage.service';
-import { toExtractedUser } from './utils/twitter-data.util';
+import { XStorageService } from './x-storage.service';
+import { toExtractedUser } from './utils/x-data.util';
 
 const createRepoMock = () => ({
   create: jest.fn((entity) => entity),
@@ -14,8 +14,8 @@ const createRepoMock = () => ({
   find: jest.fn().mockResolvedValue([]),
 });
 
-describe('TwitterStorageService', () => {
-  let service: TwitterStorageService;
+describe('XStorageService', () => {
+  let service: XStorageService;
   let userSnapshotRepo: ReturnType<typeof createRepoMock>;
   let tweetRepo: ReturnType<typeof createRepoMock>;
   let smartFollowerRepo: ReturnType<typeof createRepoMock>;
@@ -27,7 +27,7 @@ describe('TwitterStorageService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        TwitterStorageService,
+        XStorageService,
         {
           provide: getRepositoryToken(UserSnapshotEntity),
           useValue: userSnapshotRepo,
@@ -40,7 +40,7 @@ describe('TwitterStorageService', () => {
       ],
     }).compile();
 
-    service = module.get<TwitterStorageService>(TwitterStorageService);
+    service = module.get<XStorageService>(XStorageService);
   });
 
   afterEach(() => jest.clearAllMocks());

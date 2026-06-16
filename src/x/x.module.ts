@@ -6,9 +6,9 @@ import { AppConfig } from '../config/configuration';
 import { SmartFollowerEntity } from './entities/smart-follower.entity';
 import { TweetEntity } from './entities/tweet.entity';
 import { UserSnapshotEntity } from './entities/user-snapshot.entity';
-import { TwitterController } from './twitter.controller';
-import { TwitterService } from './twitter.service';
-import { TwitterStorageService } from './twitter-storage.service';
+import { XController } from './x.controller';
+import { XService } from './x.service';
+import { XStorageService } from './x-storage.service';
 
 @Module({
   imports: [
@@ -33,8 +33,8 @@ import { TwitterStorageService } from './twitter-storage.service';
       SmartFollowerEntity,
     ]),
   ],
-  controllers: [TwitterController],
-  providers: [TwitterService, TwitterStorageService],
-  exports: [TwitterService],
+  controllers: [XController],
+  providers: [XService, XStorageService],
+  exports: [XService],
 })
-export class TwitterModule {}
+export class XModule {}

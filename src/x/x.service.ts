@@ -1,9 +1,9 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
-import { TWITTER_ENDPOINTS } from './constants/twitter-endpoints.constant';
-import { TwitterApiResponse } from './interfaces/twitter-api-response.interface';
-import { TwitterStorageService } from './twitter-storage.service';
+import { X_ENDPOINTS } from './constants/x-endpoints.constant';
+import { XApiResponse } from './interfaces/x-api-response.interface';
+import { XStorageService } from './x-storage.service';
 import {
   computeInfluenceScore,
   ExtractedTweet,
@@ -12,13 +12,10 @@ import {
   extractUsers,
   isPaidPartnershipTweet,
   smartFollowerScore,
-} from './utils/twitter-data.util';
+} from './utils/x-data.util';
 import { parsePeriodDays } from './utils/period.util';
 
-export type TwitterQuery = Record<
-  string,
-  string | number | boolean | undefined
->;
+export type XQuery = Record<string, string | number | boolean | undefined>;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -50,20 +47,20 @@ const SMART_FOLLOWERS_MAX_PAGES = 5;
  * Thin 1:1 wrapper around the upstream API's `/v3` endpoints.
  *
  * Every method forwards the given query params verbatim to the matching
- * upstream endpoint (see `twitter-endpoints.constant.ts`), so any parameter
+ * upstream endpoint (see `x-endpoints.constant.ts`), so any parameter
  * accepted by the upstream API can be passed through unchanged.
  *
  * User profiles and tweets fetched via this service are also persisted to
- * the local database (see `TwitterStorageService`) so they can be analyzed
+ * the local database (see `XStorageService`) so they can be analyzed
  * later (follower growth, smart followers, paid partnership tweets, etc.).
  */
 @Injectable()
-export class TwitterService {
-  private readonly logger = new Logger(TwitterService.name);
+export class XService {
+  private readonly logger = new Logger(XService.name);
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly storage: TwitterStorageService,
+    private readonly storage: XStorageService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -71,42 +68,37 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/user/by-username - get a user's profile by @username. */
-  async getUserByUsername(query: TwitterQuery): Promise<TwitterApiResponse> {
-    const response = await this.proxy(
-      TWITTER_ENDPOINTS.USER_BY_USERNAME,
-      query,
-    );
+  async getUserByUsername(query: XQuery): Promise<XApiResponse> {
+    const response = await this.proxy(X_ENDPOINTS.USER_BY_USERNAME, query);
     await this.storage.saveUserSnapshots(response);
     return response;
   }
 
   /** GET /v3/user/by-id - get a user's profile by numeric user ID. */
-  async getUserById(query: TwitterQuery): Promise<TwitterApiResponse> {
-    const response = await this.proxy(TWITTER_ENDPOINTS.USER_BY_ID, query);
+  async getUserById(query: XQuery): Promise<XApiResponse> {
+    const response = await this.proxy(X_ENDPOINTS.USER_BY_ID, query);
     await this.storage.saveUserSnapshots(response);
     return response;
   }
 
   /** GET /v3/user/by-ids - batch lookup of user profiles by ID. */
-  async getUsersByIds(query: TwitterQuery): Promise<TwitterApiResponse> {
-    const response = await this.proxy(TWITTER_ENDPOINTS.USERS_BY_IDS, query);
+  async getUsersByIds(query: XQuery): Promise<XApiResponse> {
+    const response = await this.proxy(X_ENDPOINTS.USERS_BY_IDS, query);
     await this.storage.saveUserSnapshots(response);
     return response;
   }
 
   /** GET /v3/user/tweets - get a user's tweets. */
-  async getUserTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
-    const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, query);
+  async getUserTweets(query: XQuery): Promise<XApiResponse> {
+    const response = await this.proxy(X_ENDPOINTS.USER_TWEETS, query);
     await this.storage.saveTweets(response);
     return response;
   }
 
   /** GET /v3/user/tweets-and-replies - get a user's tweets and replies. */
-  async getUserTweetsAndReplies(
-    query: TwitterQuery,
-  ): Promise<TwitterApiResponse> {
+  async getUserTweetsAndReplies(query: XQuery): Promise<XApiResponse> {
     const response = await this.proxy(
-      TWITTER_ENDPOINTS.USER_TWEETS_AND_REPLIES,
+      X_ENDPOINTS.USER_TWEETS_AND_REPLIES,
       query,
     );
     await this.storage.saveTweets(response);
@@ -114,23 +106,23 @@ export class TwitterService {
   }
 
   /** GET /v3/user/followers - get a user's followers. */
-  getUserFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, query);
+  getUserFollowers(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.USER_FOLLOWERS, query);
   }
 
   /** GET /v3/user/followers-ids - get the numeric IDs of a user's followers. */
-  getUserFollowersIds(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS_IDS, query);
+  getUserFollowersIds(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.USER_FOLLOWERS_IDS, query);
   }
 
   /** GET /v3/user/following - get the accounts a user follows. */
-  getUserFollowing(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWING, query);
+  getUserFollowing(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.USER_FOLLOWING, query);
   }
 
   /** GET /v3/user/following-ids - get the numeric IDs of accounts a user follows. */
-  getUserFollowingIds(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWING_IDS, query);
+  getUserFollowingIds(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.USER_FOLLOWING_IDS, query);
   }
 
   // ---------------------------------------------------------------------
@@ -138,18 +130,18 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/tweet/details - get a tweet's details. */
-  getTweetDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.TWEET_DETAILS, query);
+  getTweetDetails(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.TWEET_DETAILS, query);
   }
 
   /** GET /v3/tweet/retweets - get the users who retweeted a tweet. */
-  getTweetRetweets(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.TWEET_RETWEETS, query);
+  getTweetRetweets(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.TWEET_RETWEETS, query);
   }
 
   /** GET /v3/tweet/quotes - get the quote tweets of a tweet. */
-  getTweetQuotes(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.TWEET_QUOTES, query);
+  getTweetQuotes(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.TWEET_QUOTES, query);
   }
 
   // ---------------------------------------------------------------------
@@ -157,8 +149,8 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/search - search tweets/users. */
-  search(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.SEARCH, query);
+  search(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.SEARCH, query);
   }
 
   // ---------------------------------------------------------------------
@@ -166,23 +158,23 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/community/details - get details about a Community. */
-  getCommunityDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_DETAILS, query);
+  getCommunityDetails(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.COMMUNITY_DETAILS, query);
   }
 
   /** GET /v3/community/tweets - get a Community's tweet timeline. */
-  getCommunityTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_TWEETS, query);
+  getCommunityTweets(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.COMMUNITY_TWEETS, query);
   }
 
   /** GET /v3/community/members - get a Community's members. */
-  getCommunityMembers(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_MEMBERS, query);
+  getCommunityMembers(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.COMMUNITY_MEMBERS, query);
   }
 
   /** GET /v3/community/search - search Communities. */
-  searchCommunities(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.COMMUNITY_SEARCH, query);
+  searchCommunities(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.COMMUNITY_SEARCH, query);
   }
 
   // ---------------------------------------------------------------------
@@ -190,23 +182,23 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/list/tweets - get a List's tweet timeline. */
-  getListTweets(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.LIST_TWEETS, query);
+  getListTweets(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.LIST_TWEETS, query);
   }
 
   /** GET /v3/list/members - get a List's members. */
-  getListMembers(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.LIST_MEMBERS, query);
+  getListMembers(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.LIST_MEMBERS, query);
   }
 
   /** GET /v3/list/details - get details about a List. */
-  getListDetails(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.LIST_DETAILS, query);
+  getListDetails(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.LIST_DETAILS, query);
   }
 
   /** GET /v3/list/followers - get a List's followers. */
-  getListFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.LIST_FOLLOWERS, query);
+  getListFollowers(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.LIST_FOLLOWERS, query);
   }
 
   // ---------------------------------------------------------------------
@@ -214,8 +206,8 @@ export class TwitterService {
   // ---------------------------------------------------------------------
 
   /** GET /v3/space/by-id - get details about a Space. */
-  getSpaceById(query: TwitterQuery): Promise<TwitterApiResponse> {
-    return this.proxy(TWITTER_ENDPOINTS.SPACE_BY_ID, query);
+  getSpaceById(query: XQuery): Promise<XApiResponse> {
+    return this.proxy(X_ENDPOINTS.SPACE_BY_ID, query);
   }
 
   // ---------------------------------------------------------------------
@@ -229,7 +221,7 @@ export class TwitterService {
    * returning the top `limit` (default 25). The ranking is also persisted
    * so it can be tracked over time.
    */
-  async getSmartFollowers(query: TwitterQuery): Promise<TwitterApiResponse> {
+  async getSmartFollowers(query: XQuery): Promise<XApiResponse> {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
     const limit = query.limit !== undefined ? Number(query.limit) : 25;
@@ -239,7 +231,7 @@ export class TwitterService {
     const followers: ExtractedUser[] = [];
 
     for (let page = 0; page < SMART_FOLLOWERS_MAX_PAGES; page++) {
-      const response = await this.proxy(TWITTER_ENDPOINTS.USER_FOLLOWERS, {
+      const response = await this.proxy(X_ENDPOINTS.USER_FOLLOWERS, {
         userId,
         cursor,
       });
@@ -294,9 +286,7 @@ export class TwitterService {
    * any, is served from previously-stored tweets instead of hitting the
    * upstream API again.
    */
-  async getPaidPartnershipTweets(
-    query: TwitterQuery,
-  ): Promise<TwitterApiResponse> {
+  async getPaidPartnershipTweets(query: XQuery): Promise<XApiResponse> {
     const username =
       query.username !== undefined ? String(query.username) : undefined;
     const period =
@@ -314,7 +304,7 @@ export class TwitterService {
     const freshTweets: ExtractedTweet[] = [];
 
     for (let page = 0; page < PAID_PARTNERSHIP_MAX_PAGES; page++) {
-      const response = await this.proxy(TWITTER_ENDPOINTS.USER_TWEETS, {
+      const response = await this.proxy(X_ENDPOINTS.USER_TWEETS, {
         userId,
         cursor,
       });
@@ -385,11 +375,8 @@ export class TwitterService {
    * stats: an "influence score" (see `computeInfluenceScore`) and follower
    * growth since the last time this user was fetched.
    */
-  async getUserStats(query: TwitterQuery): Promise<TwitterApiResponse> {
-    const response = await this.proxy(
-      TWITTER_ENDPOINTS.USER_BY_USERNAME,
-      query,
-    );
+  async getUserStats(query: XQuery): Promise<XApiResponse> {
+    const response = await this.proxy(X_ENDPOINTS.USER_BY_USERNAME, query);
     const [user] = extractUsers(response);
 
     if (!user) {
@@ -423,35 +410,30 @@ export class TwitterService {
    * `/v3/user/tweets`: returns `query.userId` as-is if given, otherwise
    * looks it up via `/v3/user/by-username` from `query.username`.
    */
-  private async resolveUserId(
-    query: TwitterQuery,
-  ): Promise<string | undefined> {
+  private async resolveUserId(query: XQuery): Promise<string | undefined> {
     if (query.userId !== undefined) {
       return String(query.userId);
     }
     if (query.username === undefined) {
       return undefined;
     }
-    const profile = await this.proxy(TWITTER_ENDPOINTS.USER_BY_USERNAME, {
+    const profile = await this.proxy(X_ENDPOINTS.USER_BY_USERNAME, {
       username: query.username,
     });
     return extractUsers(profile)[0]?.id ?? undefined;
   }
 
-  private async proxy(
-    endpoint: string,
-    query: TwitterQuery,
-  ): Promise<TwitterApiResponse> {
+  private async proxy(endpoint: string, query: XQuery): Promise<XApiResponse> {
     const params = this.cleanParams(query);
     this.logger.debug(`GET ${endpoint} ${JSON.stringify(params)}`);
     const response = await firstValueFrom(
-      this.httpService.get<TwitterApiResponse>(endpoint, { params }),
+      this.httpService.get<XApiResponse>(endpoint, { params }),
     );
     return response.data;
   }
 
   /** Strips undefined/empty values so they aren't forwarded as query params. */
-  private cleanParams(query: TwitterQuery): TwitterQuery {
+  private cleanParams(query: XQuery): XQuery {
     return Object.fromEntries(
       Object.entries(query).filter(
         ([, value]) => value !== undefined && value !== '',

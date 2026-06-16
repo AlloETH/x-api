@@ -7,7 +7,7 @@
  * query params), which made it possible to enumerate the real `/v3/...`
  * routes exposed by this API without consuming request quota.
  */
-export const TWITTER_ENDPOINTS = {
+export const X_ENDPOINTS = {
   // Users
   USER_BY_USERNAME: '/v3/user/by-username',
   USER_BY_ID: '/v3/user/by-id',

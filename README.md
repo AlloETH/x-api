@@ -1,7 +1,7 @@
-# x-api — X (Twitter) Data API
+# x-api — X Data API
 
-A NestJS wrapper around an upstream X (Twitter) data API. Every route is a
-thin 1:1 proxy to the upstream `/v3/...` endpoint, mounted under `/twitter`,
+A NestJS wrapper around an upstream X data API. Every route is a
+thin 1:1 proxy to the upstream `/v3/...` endpoint, mounted under `/x`,
 with upstream authentication, error translation, rate limiting and API docs
 handled centrally.
 
@@ -30,7 +30,7 @@ they will be forwarded unchanged.
 ## Features
 
 - 22 routes covering users, tweets, search, communities, lists and spaces -
-  mirroring the upstream `/v3/...` paths 1:1 under `/twitter`.
+  mirroring the upstream `/v3/...` paths 1:1 under `/x`.
 - Centralized upstream API authentication via `@nestjs/axios` (auth headers
   configured once for all requests).
 - All query parameters are forwarded to the upstream endpoint verbatim.
@@ -43,11 +43,11 @@ they will be forwarded unchanged.
   [Database & persistence](#database--persistence)).
 - **Derived analytics endpoints** (computed locally, inspired by
   [app.sorsa.io](https://app.sorsa.io)):
-  - `GET /twitter/v3/user/smart-followers` - a user's followers ranked by
+  - `GET /x/v3/user/smart-followers` - a user's followers ranked by
     reach + verification.
-  - `GET /twitter/v3/user/paid-partnership-tweets` - a user's tweets flagged
+  - `GET /x/v3/user/paid-partnership-tweets` - a user's tweets flagged
     as paid partnership / branded content.
-  - `GET /twitter/v3/user/stats` - influence score and follower growth since
+  - `GET /x/v3/user/stats` - influence score and follower growth since
     the last fetch.
 - Interactive API docs powered by [Scalar](https://scalar.com) at `/docs`,
   with example requests/responses and documented error shapes for every
@@ -150,12 +150,12 @@ documented for every route via `ApiUpstreamErrorResponses`
 
 ## API Endpoints
 
-All endpoints are mounted under `/twitter` and mirror the upstream path
-exactly (see [`twitter-endpoints.constant.ts`](src/twitter/constants/twitter-endpoints.constant.ts)).
+All endpoints are mounted under `/x` and mirror the upstream path
+exactly (see [`x-endpoints.constant.ts`](src/x/constants/x-endpoints.constant.ts)).
 For example:
 
 ```
-GET /twitter/v3/user/by-username?username=elonmusk
+GET /x/v3/user/by-username?username=elonmusk
   -> proxies to
 GET <RAPIDAPI_BASE_URL>/v3/user/by-username?username=elonmusk
 ```
@@ -164,15 +164,15 @@ GET <RAPIDAPI_BASE_URL>/v3/user/by-username?username=elonmusk
 
 | Method | Path                                     | Params                          | Description                                |
 | ------ | ------------------------------------------ | ----------------------------- | --------------------------------------------- |
-| GET    | `/twitter/v3/user/by-username`              | `username` *(required)*        | Get a user's profile by username               |
-| GET    | `/twitter/v3/user/by-id`                    | `userId` *(required)*           | Get a user's profile by numeric user ID        |
-| GET    | `/twitter/v3/user/by-ids`                   | `userIds` *(required, comma-separated)* | Batch lookup of user profiles by ID    |
-| GET    | `/twitter/v3/user/tweets`                   | `userId` *(required)*, `cursor` | Get a user's tweets                            |
-| GET    | `/twitter/v3/user/tweets-and-replies`       | `userId` *(required)*, `cursor` | Get a user's tweets and replies                |
-| GET    | `/twitter/v3/user/followers`                | `userId` *(required)*, `cursor` | Get a user's followers                         |
-| GET    | `/twitter/v3/user/followers-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of a user's followers      |
-| GET    | `/twitter/v3/user/following`                | `userId` *(required)*, `cursor` | Get the accounts a user follows                |
-| GET    | `/twitter/v3/user/following-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of accounts a user follows |
+| GET    | `/x/v3/user/by-username`              | `username` *(required)*        | Get a user's profile by username               |
+| GET    | `/x/v3/user/by-id`                    | `userId` *(required)*           | Get a user's profile by numeric user ID        |
+| GET    | `/x/v3/user/by-ids`                   | `userIds` *(required, comma-separated)* | Batch lookup of user profiles by ID    |
+| GET    | `/x/v3/user/tweets`                   | `userId` *(required)*, `cursor` | Get a user's tweets                            |
+| GET    | `/x/v3/user/tweets-and-replies`       | `userId` *(required)*, `cursor` | Get a user's tweets and replies                |
+| GET    | `/x/v3/user/followers`                | `userId` *(required)*, `cursor` | Get a user's followers                         |
+| GET    | `/x/v3/user/followers-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of a user's followers      |
+| GET    | `/x/v3/user/following`                | `userId` *(required)*, `cursor` | Get the accounts a user follows                |
+| GET    | `/x/v3/user/following-ids`            | `userId` *(required)*, `cursor` | Get the numeric IDs of accounts a user follows |
 
 ### Derived analytics (computed locally)
 
@@ -183,47 +183,47 @@ for how each one is computed.
 
 | Method | Path                                     | Params                          | Description                                          |
 | ------ | ------------------------------------------ | ----------------------------- | ----------------------------------------------------- |
-| GET    | `/twitter/v3/user/smart-followers`          | `username` or `userId` *(one required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
-| GET    | `/twitter/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `period` (default `30d`, e.g. `7d`/`3m`/`1y`), `cursor` | A user's tweets flagged as paid partnership / branded content over `period` (only the last 7 days are re-fetched live; older data comes from the database) |
-| GET    | `/twitter/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
+| GET    | `/x/v3/user/smart-followers`          | `username` or `userId` *(one required)*, `limit` (default 25), `cursor` | A user's followers ranked by reach + verification |
+| GET    | `/x/v3/user/paid-partnership-tweets`  | `username` or `userId` *(one required)*, `period` (default `30d`, e.g. `7d`/`3m`/`1y`), `cursor` | A user's tweets flagged as paid partnership / branded content over `period` (only the last 7 days are re-fetched live; older data comes from the database) |
+| GET    | `/x/v3/user/stats`                    | `username` *(required)*        | Influence score + follower growth since the last fetch |
 
 ### Tweets
 
 | Method | Path                          | Params             | Description                       |
 | ------ | -------------------------------- | -------------------- | ------------------------------------- |
-| GET    | `/twitter/v3/tweet/details`      | `tweetId` *(required)*, `cursor` | Get a tweet's details                  |
-| GET    | `/twitter/v3/tweet/retweets`     | `tweetId` *(required)*, `cursor` | Get the users who retweeted a tweet    |
-| GET    | `/twitter/v3/tweet/quotes`       | `tweetId` *(required)*, `cursor` | Get the quote tweets of a tweet        |
+| GET    | `/x/v3/tweet/details`      | `tweetId` *(required)*, `cursor` | Get a tweet's details                  |
+| GET    | `/x/v3/tweet/retweets`     | `tweetId` *(required)*, `cursor` | Get the users who retweeted a tweet    |
+| GET    | `/x/v3/tweet/quotes`       | `tweetId` *(required)*, `cursor` | Get the quote tweets of a tweet        |
 
 ### Search
 
 | Method | Path              | Params               | Description           |
 | ------ | -------------------- | ---------------------- | ------------------------- |
-| GET    | `/twitter/v3/search`  | `query` *(required)*, `type` *(required, e.g. "Top", "Latest", "People")*, `cursor` | Search tweets/users        |
+| GET    | `/x/v3/search`  | `query` *(required)*, `type` *(required, e.g. "Top", "Latest", "People")*, `cursor` | Search tweets/users        |
 
 ### Communities
 
 | Method | Path                              | Params             | Description                  |
 | ------ | ------------------------------------ | -------------------- | --------------------------------- |
-| GET    | `/twitter/v3/community/details`      | `communityId` *(required)* | Get details about a Community      |
-| GET    | `/twitter/v3/community/tweets`       | `communityId` *(required)*, `cursor` | Get a Community's tweet timeline   |
-| GET    | `/twitter/v3/community/members`      | `communityId` *(required)*, `cursor` | Get a Community's members          |
-| GET    | `/twitter/v3/community/search`       | `query` *(required)*, `cursor` | Search Communities                 |
+| GET    | `/x/v3/community/details`      | `communityId` *(required)* | Get details about a Community      |
+| GET    | `/x/v3/community/tweets`       | `communityId` *(required)*, `cursor` | Get a Community's tweet timeline   |
+| GET    | `/x/v3/community/members`      | `communityId` *(required)*, `cursor` | Get a Community's members          |
+| GET    | `/x/v3/community/search`       | `query` *(required)*, `cursor` | Search Communities                 |
 
 ### Lists
 
 | Method | Path                          | Params             | Description             |
 | ------ | -------------------------------- | -------------------- | --------------------------- |
-| GET    | `/twitter/v3/list/tweets`        | `listId` *(required)*, `cursor` | Get a List's tweet timeline   |
-| GET    | `/twitter/v3/list/members`       | `listId` *(required)*, `cursor` | Get a List's members          |
-| GET    | `/twitter/v3/list/details`       | `listId` *(required)* | Get details about a List      |
-| GET    | `/twitter/v3/list/followers`     | `listId` *(required)*, `cursor` | Get a List's followers        |
+| GET    | `/x/v3/list/tweets`        | `listId` *(required)*, `cursor` | Get a List's tweet timeline   |
+| GET    | `/x/v3/list/members`       | `listId` *(required)*, `cursor` | Get a List's members          |
+| GET    | `/x/v3/list/details`       | `listId` *(required)* | Get details about a List      |
+| GET    | `/x/v3/list/followers`     | `listId` *(required)*, `cursor` | Get a List's followers        |
 
 ### Spaces
 
 | Method | Path                       | Params       | Description               |
 | ------ | ----------------------------- | ---------------- | ------------------------------ |
-| GET    | `/twitter/v3/space/by-id`      | `spaceId` *(required)* | Get details about a Space        |
+| GET    | `/x/v3/space/by-id`      | `spaceId` *(required)* | Get details about a Space        |
 
 ### Health
 
@@ -234,15 +234,15 @@ for how each one is computed.
 ## Architecture
 
 Each controller route accepts `@Query() query: Record<string, string>` and
-passes it straight through to `TwitterService`, which forwards it verbatim
+passes it straight through to `XService`, which forwards it verbatim
 as query params to the matching upstream endpoint
-(`src/twitter/constants/twitter-endpoints.constant.ts`). This means:
+(`src/x/constants/x-endpoints.constant.ts`). This means:
 
 - The wrapper stays correct even if a guessed parameter name above is wrong
   - just pass the correct param name and it's forwarded as-is.
 - Adding/adjusting an endpoint is a two-line change: add the path to
-  `twitter-endpoints.constant.ts`, add a method to `TwitterService`, and a
-  route to `TwitterController`.
+  `x-endpoints.constant.ts`, add a method to `XService`, and a
+  route to `XController`.
 
 ## Database & persistence
 
@@ -345,12 +345,12 @@ The upstream API has **no endpoints** for "smart followers",
 "paid partnership" posts, or influence scoring (inspired by
 [app.sorsa.io](https://app.sorsa.io)'s profile dashboard). These are computed
 locally on top of the existing `/v3/user/followers` and `/v3/user/tweets`
-responses by `src/twitter/utils/twitter-data.util.ts`.
+responses by `src/x/utils/x-data.util.ts`.
 
 `/v3/user/followers` and `/v3/user/tweets` require a numeric `userId`, so
 both derived endpoints accept either `username` or `userId` and resolve a
 `username` to its `userId` via `/v3/user/by-username` first
-(`TwitterService.resolveUserId`).
+(`XService.resolveUserId`).
 
 - **Smart followers** (`/v3/user/smart-followers`): fetches `/v3/user/followers`,
   paginating via `pagination.nextCursor` for up to `SMART_FOLLOWERS_MAX_PAGES`
@@ -362,7 +362,7 @@ both derived endpoints accept either `username` or `userId` and resolve a
 - **Paid partnership tweets** (`/v3/user/paid-partnership-tweets`): covers a
   configurable lookback `period` - a number followed by `d`/`m`/`y`, e.g.
   `7d`, `30d`, `3m`, `6m`, `1y`, `2y` (default `30d`, see
-  `PAID_PARTNERSHIP_DEFAULT_PERIOD` in `twitter.service.ts`; `m` = 30 days,
+  `PAID_PARTNERSHIP_DEFAULT_PERIOD` in `x.service.ts`; `m` = 30 days,
   `y` = 365 days). However long `period` is, **only the most recent
   `PAID_PARTNERSHIP_REFRESH_DAYS` (7) days are re-fetched from
   `/v3/user/tweets`** - paginating via `pagination.nextCursor` (tweets are
@@ -397,7 +397,7 @@ lists, spaces).
 
 ```
 src/
-├── app.module.ts            # Root module (config, throttling, DB, Twitter + InfoFi modules)
+├── app.module.ts            # Root module (config, throttling, DB, X + InfoFi modules)
 ├── main.ts                  # Bootstrap, global pipes/filters, Swagger
 ├── config/                   # Environment configuration & validation
 ├── database/
@@ -405,11 +405,11 @@ src/
 ├── common/
 │   ├── filters/               # Upstream error -> HTTP exception translation
 │   └── interceptors/          # Request logging
-├── twitter/
-│   ├── twitter.module.ts      # HttpModule + TypeORM feature config
-│   ├── twitter.controller.ts  # REST endpoints (1:1 proxy + derived analytics)
-│   ├── twitter.service.ts     # Upstream API calls + persistence
-│   ├── twitter-storage.service.ts  # Persists user/tweet/follower data
+├── x/
+│   ├── x.module.ts      # HttpModule + TypeORM feature config
+│   ├── x.controller.ts  # REST endpoints (1:1 proxy + derived analytics)
+│   ├── x.service.ts     # Upstream API calls + persistence
+│   ├── x-storage.service.ts  # Persists user/tweet/follower data
 │   ├── constants/              # Upstream endpoint path map
 │   ├── entities/               # TypeORM entities (user_snapshots, tweets, smart_followers)
 │   ├── utils/                  # Extraction & scoring heuristics

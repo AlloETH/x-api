@@ -17,7 +17,7 @@ import { ApiResponse } from '@nestjs/swagger';
  *   (including invalid/expired upstream API credentials).
  *
  * Apply once at the controller level so it documents every route in
- * `TwitterController`.
+ * `XController`.
  */
 export function ApiUpstreamErrorResponses() {
   return applyDecorators(

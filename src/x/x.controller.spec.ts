@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TwitterController } from './twitter.controller';
-import { TwitterService } from './twitter.service';
+import { XController } from './x.controller';
+import { XService } from './x.service';
 
-describe('TwitterController', () => {
-  let controller: TwitterController;
-  let service: jest.Mocked<TwitterService>;
+describe('XController', () => {
+  let controller: XController;
+  let service: jest.Mocked<XService>;
 
   beforeEach(async () => {
-    const serviceMock: Partial<jest.Mocked<TwitterService>> = {
+    const serviceMock: Partial<jest.Mocked<XService>> = {
       getUserByUsername: jest.fn(),
       getUserById: jest.fn(),
       getUserTweets: jest.fn(),
@@ -20,12 +20,12 @@ describe('TwitterController', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [TwitterController],
-      providers: [{ provide: TwitterService, useValue: serviceMock }],
+      controllers: [XController],
+      providers: [{ provide: XService, useValue: serviceMock }],
     }).compile();
 
-    controller = module.get<TwitterController>(TwitterController);
-    service = module.get(TwitterService);
+    controller = module.get<XController>(XController);
+    service = module.get(XService);
   });
 
   it('delegates getUserByUsername to the service with the raw query', async () => {

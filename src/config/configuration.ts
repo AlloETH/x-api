@@ -13,6 +13,7 @@ export interface AppConfig {
   database: {
     url: string;
   };
+  apiKeys: string[];
 }
 
 export default (): AppConfig => ({
@@ -33,4 +34,8 @@ export default (): AppConfig => ({
       process.env.DATABASE_URL ??
       'postgresql://postgres:postgres@localhost:5432/x_api',
   },
+  apiKeys: (process.env.API_KEYS ?? '')
+    .split(',')
+    .map((key) => key.trim())
+    .filter((key) => key.length > 0),
 });

@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 /**
- * A point-in-time snapshot of a Twitter/X user's profile, captured whenever
+ * A point-in-time snapshot of a X user's profile, captured whenever
  * a user-related endpoint is fetched. Storing one row per fetch (rather than
  * upserting) lets us derive growth metrics (e.g. follower deltas) over time.
  */

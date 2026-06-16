@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Public } from './common/decorators/public.decorator';
 import { AppService } from './app.service';
 
 @ApiTags('health')
@@ -7,6 +8,7 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get('health')
   getHealth(): { status: string } {
     return this.appService.getHealth();

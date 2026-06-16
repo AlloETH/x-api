@@ -13,4 +13,5 @@ export const validationSchema = Joi.object({
   DATABASE_URL: Joi.string().default(
     'postgresql://postgres:postgres@localhost:5432/x_api',
   ),
+  API_KEYS: Joi.string().required(),
 });

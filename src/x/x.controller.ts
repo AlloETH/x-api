@@ -6,8 +6,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiUpstreamErrorResponses } from '../common/decorators/api-upstream-response.decorator';
-import { TwitterService } from './twitter.service';
-import { TwitterApiResponse } from './interfaces/twitter-api-response.interface';
+import { XService } from './x.service';
+import { XApiResponse } from './interfaces/x-api-response.interface';
 import {
   FOLLOWERS_RESPONSE_EXAMPLE,
   FOLLOWING_RESPONSE_EXAMPLE,
@@ -25,7 +25,7 @@ const RAW_PASSTHROUGH_DESCRIPTION =
 
 /**
  * Routes mirror the upstream API's `/v3/...` paths 1:1 (mounted
- * under `/twitter`), so `GET /twitter/v3/user/by-username?username=elonmusk`
+ * under `/x`), so `GET /x/v3/user/by-username?username=elonmusk`
  * proxies directly to `GET /v3/user/by-username?username=elonmusk` upstream.
  *
  * All query parameters are forwarded to the upstream API verbatim. The
@@ -38,9 +38,9 @@ const RAW_PASSTHROUGH_DESCRIPTION =
  * upstream failures).
  */
 @ApiUpstreamErrorResponses()
-@Controller('twitter')
-export class TwitterController {
-  constructor(private readonly twitterService: TwitterService) {}
+@Controller('x')
+export class XController {
+  constructor(private readonly xService: XService) {}
 
   // ---------------------------------------------------------------------
   // Users
@@ -56,8 +56,8 @@ export class TwitterController {
   })
   getUserByUsername(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserByUsername(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserByUsername(query);
   }
 
   @Get('v3/user/by-id')
@@ -68,10 +68,8 @@ export class TwitterController {
     description: "The user's profile, as returned by the upstream API.",
     schema: { example: USER_RESPONSE_EXAMPLE },
   })
-  getUserById(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserById(query);
+  getUserById(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getUserById(query);
   }
 
   @Get('v3/user/by-ids')
@@ -85,10 +83,8 @@ export class TwitterController {
     description: 'Comma-separated user IDs',
   })
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
-  getUsersByIds(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUsersByIds(query);
+  getUsersByIds(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getUsersByIds(query);
   }
 
   @Get('v3/user/tweets')
@@ -102,10 +98,8 @@ export class TwitterController {
       'API. Also persisted to the database (see README).',
     schema: { example: TWEETS_RESPONSE_EXAMPLE },
   })
-  getUserTweets(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserTweets(query);
+  getUserTweets(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getUserTweets(query);
   }
 
   @Get('v3/user/tweets-and-replies')
@@ -121,8 +115,8 @@ export class TwitterController {
   })
   getUserTweetsAndReplies(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserTweetsAndReplies(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserTweetsAndReplies(query);
   }
 
   @Get('v3/user/followers')
@@ -136,8 +130,8 @@ export class TwitterController {
   })
   getUserFollowers(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowers(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserFollowers(query);
   }
 
   @Get('v3/user/followers-ids')
@@ -148,8 +142,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getUserFollowersIds(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowersIds(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserFollowersIds(query);
   }
 
   @Get('v3/user/following')
@@ -166,8 +160,8 @@ export class TwitterController {
   })
   getUserFollowing(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowing(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserFollowing(query);
   }
 
   @Get('v3/user/following-ids')
@@ -178,8 +172,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getUserFollowingIds(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserFollowingIds(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getUserFollowingIds(query);
   }
 
   // ---------------------------------------------------------------------
@@ -223,8 +217,8 @@ export class TwitterController {
   })
   getSmartFollowers(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getSmartFollowers(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getSmartFollowers(query);
   }
 
   @Get('v3/user/paid-partnership-tweets')
@@ -270,8 +264,8 @@ export class TwitterController {
   })
   getPaidPartnershipTweets(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getPaidPartnershipTweets(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getPaidPartnershipTweets(query);
   }
 
   @Get('v3/user/stats')
@@ -291,10 +285,8 @@ export class TwitterController {
     description: "A user's influence score and follower growth.",
     schema: { example: USER_STATS_RESPONSE_EXAMPLE },
   })
-  getUserStats(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getUserStats(query);
+  getUserStats(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getUserStats(query);
   }
 
   // ---------------------------------------------------------------------
@@ -309,8 +301,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getTweetDetails(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetDetails(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getTweetDetails(query);
   }
 
   @Get('v3/tweet/retweets')
@@ -321,8 +313,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getTweetRetweets(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetRetweets(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getTweetRetweets(query);
   }
 
   @Get('v3/tweet/quotes')
@@ -333,8 +325,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getTweetQuotes(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getTweetQuotes(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getTweetQuotes(query);
   }
 
   // ---------------------------------------------------------------------
@@ -352,8 +344,8 @@ export class TwitterController {
   })
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
-  search(@Query() query: Record<string, string>): Promise<TwitterApiResponse> {
-    return this.twitterService.search(query);
+  search(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.search(query);
   }
 
   // ---------------------------------------------------------------------
@@ -362,7 +354,7 @@ export class TwitterController {
 
   @Get('v3/community/details')
   @ApiTags('Communities')
-  @ApiOperation({ summary: 'Get details about a Twitter Community' })
+  @ApiOperation({ summary: 'Get details about a X Community' })
   @ApiQuery({
     name: 'communityId',
     required: true,
@@ -371,8 +363,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getCommunityDetails(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getCommunityDetails(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getCommunityDetails(query);
   }
 
   @Get('v3/community/tweets')
@@ -387,8 +379,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getCommunityTweets(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getCommunityTweets(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getCommunityTweets(query);
   }
 
   @Get('v3/community/members')
@@ -403,20 +395,20 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getCommunityMembers(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getCommunityMembers(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getCommunityMembers(query);
   }
 
   @Get('v3/community/search')
   @ApiTags('Communities')
-  @ApiOperation({ summary: 'Search Twitter Communities' })
+  @ApiOperation({ summary: 'Search X Communities' })
   @ApiQuery({ name: 'query', required: true })
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   searchCommunities(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.searchCommunities(query);
+  ): Promise<XApiResponse> {
+    return this.xService.searchCommunities(query);
   }
 
   // ---------------------------------------------------------------------
@@ -429,10 +421,8 @@ export class TwitterController {
   @ApiQuery({ name: 'listId', required: true, example: '1234567890' })
   @ApiQuery({ name: 'cursor', required: false })
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
-  getListTweets(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getListTweets(query);
+  getListTweets(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getListTweets(query);
   }
 
   @Get('v3/list/members')
@@ -443,8 +433,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getListMembers(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getListMembers(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getListMembers(query);
   }
 
   @Get('v3/list/details')
@@ -454,8 +444,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getListDetails(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getListDetails(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getListDetails(query);
   }
 
   @Get('v3/list/followers')
@@ -466,8 +456,8 @@ export class TwitterController {
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
   getListFollowers(
     @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getListFollowers(query);
+  ): Promise<XApiResponse> {
+    return this.xService.getListFollowers(query);
   }
 
   // ---------------------------------------------------------------------
@@ -476,12 +466,10 @@ export class TwitterController {
 
   @Get('v3/space/by-id')
   @ApiTags('Spaces')
-  @ApiOperation({ summary: 'Get details about a Twitter Space' })
+  @ApiOperation({ summary: 'Get details about a X Space' })
   @ApiQuery({ name: 'spaceId', required: true, example: '1RDxlgyZbnAJL' })
   @ApiOkResponse({ description: RAW_PASSTHROUGH_DESCRIPTION })
-  getSpaceById(
-    @Query() query: Record<string, string>,
-  ): Promise<TwitterApiResponse> {
-    return this.twitterService.getSpaceById(query);
+  getSpaceById(@Query() query: Record<string, string>): Promise<XApiResponse> {
+    return this.xService.getSpaceById(query);
   }
 }

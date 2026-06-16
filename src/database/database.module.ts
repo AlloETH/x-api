@@ -3,9 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfig } from '../config/configuration';
 import { INFOFI_ENTITIES } from '../infofi/entities';
-import { SmartFollowerEntity } from '../twitter/entities/smart-follower.entity';
-import { TweetEntity } from '../twitter/entities/tweet.entity';
-import { UserSnapshotEntity } from '../twitter/entities/user-snapshot.entity';
+import { SmartFollowerEntity } from '../x/entities/smart-follower.entity';
+import { TweetEntity } from '../x/entities/tweet.entity';
+import { UserSnapshotEntity } from '../x/entities/user-snapshot.entity';
 
 @Module({
   imports: [

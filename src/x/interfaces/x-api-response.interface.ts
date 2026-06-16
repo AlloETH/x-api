@@ -3,4 +3,4 @@
  * endpoint. Consumers should treat the response as a plain object and
  * narrow it as needed.
  */
-export type TwitterApiResponse = Record<string, any>;
+export type XApiResponse = Record<string, any>;

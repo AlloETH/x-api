@@ -5,9 +5,9 @@ import {
   isPaidPartnershipTweet,
   smartFollowerScore,
   toExtractedUser,
-} from './twitter-data.util';
+} from './x-data.util';
 
-describe('twitter-data.util', () => {
+describe('x-data.util', () => {
   describe('extractUsers', () => {
     it('finds user-like objects nested anywhere in the response', () => {
       const response = {

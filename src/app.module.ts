@@ -6,10 +6,11 @@ import configuration, { AppConfig } from './config/configuration';
 import { validationSchema } from './config/validation';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ApiKeyGuard } from './common/guards/api-key.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { DatabaseModule } from './database/database.module';
 import { InfofiModule } from './infofi/infofi.module';
-import { TwitterModule } from './twitter/twitter.module';
+import { XModule } from './x/x.module';
 
 @Module({
   imports: [
@@ -29,12 +30,16 @@ import { TwitterModule } from './twitter/twitter.module';
       },
     }),
     DatabaseModule,
-    TwitterModule,
+    XModule,
     InfofiModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ApiKeyGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

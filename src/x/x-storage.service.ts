@@ -10,7 +10,7 @@ import {
   extractTweets,
   extractUsers,
   isPaidPartnershipTweet,
-} from './utils/twitter-data.util';
+} from './utils/x-data.util';
 
 export interface ScoredFollower extends ExtractedUser {
   score: number;
@@ -23,8 +23,8 @@ export interface ScoredFollower extends ExtractedUser {
  * database hiccup doesn't break the proxied API response.
  */
 @Injectable()
-export class TwitterStorageService {
-  private readonly logger = new Logger(TwitterStorageService.name);
+export class XStorageService {
+  private readonly logger = new Logger(XStorageService.name);
 
   constructor(
     @InjectRepository(UserSnapshotEntity)

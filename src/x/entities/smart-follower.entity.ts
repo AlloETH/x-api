@@ -8,7 +8,7 @@ import {
 
 /**
  * A "smart follower" of a target account - i.e. a follower ranked highly by
- * `smartFollowerScore` (see `utils/twitter-data.util.ts`). Rows are upserted
+ * `smartFollowerScore` (see `utils/x-data.util.ts`). Rows are upserted
  * by (targetUsername, followerUsername) so the table always reflects the
  * most recently computed ranking for each target account.
  */

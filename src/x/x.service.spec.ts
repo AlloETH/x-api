@@ -3,9 +3,9 @@ import { HttpService } from '@nestjs/axios';
 import { Test, TestingModule } from '@nestjs/testing';
 import { of } from 'rxjs';
 import { AxiosResponse } from 'axios';
-import { TwitterService } from './twitter.service';
-import { TwitterStorageService } from './twitter-storage.service';
-import { TWITTER_ENDPOINTS } from './constants/twitter-endpoints.constant';
+import { XService } from './x.service';
+import { XStorageService } from './x-storage.service';
+import { X_ENDPOINTS } from './constants/x-endpoints.constant';
 
 const mockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
   data,
@@ -15,10 +15,10 @@ const mockAxiosResponse = <T>(data: T): AxiosResponse<T> => ({
   config: {} as any,
 });
 
-describe('TwitterService', () => {
-  let service: TwitterService;
+describe('XService', () => {
+  let service: XService;
   let httpService: { get: jest.Mock };
-  let storageService: jest.Mocked<TwitterStorageService>;
+  let storageService: jest.Mocked<XStorageService>;
 
   beforeEach(async () => {
     httpService = { get: jest.fn() };
@@ -28,17 +28,17 @@ describe('TwitterService', () => {
       saveSmartFollowers: jest.fn().mockResolvedValue(undefined),
       getLatestSnapshot: jest.fn().mockResolvedValue(null),
       getStoredPaidPartnershipTweets: jest.fn().mockResolvedValue([]),
-    } as unknown as jest.Mocked<TwitterStorageService>;
+    } as unknown as jest.Mocked<XStorageService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        TwitterService,
+        XService,
         { provide: HttpService, useValue: httpService },
-        { provide: TwitterStorageService, useValue: storageService },
+        { provide: XStorageService, useValue: storageService },
       ],
     }).compile();
 
-    service = module.get<TwitterService>(TwitterService);
+    service = module.get<XService>(XService);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -48,12 +48,9 @@ describe('TwitterService', () => {
 
     const result = await service.getUserByUsername({ username: 'elonmusk' });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.USER_BY_USERNAME,
-      {
-        params: { username: 'elonmusk' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.USER_BY_USERNAME, {
+      params: { username: 'elonmusk' },
+    });
     expect(result).toEqual({ id: '1' });
     expect(storageService.saveUserSnapshots).toHaveBeenCalledWith({ id: '1' });
   });
@@ -63,7 +60,7 @@ describe('TwitterService', () => {
 
     await service.getUserById({ userId: '44196397' });
 
-    expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.USER_BY_ID, {
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.USER_BY_ID, {
       params: { userId: '44196397' },
     });
   });
@@ -73,12 +70,9 @@ describe('TwitterService', () => {
 
     await service.getUserTweets({ userId: '44196397', cursor: 'cursor123' });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.USER_TWEETS,
-      {
-        params: { userId: '44196397', cursor: 'cursor123' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.USER_TWEETS, {
+      params: { userId: '44196397', cursor: 'cursor123' },
+    });
     expect(storageService.saveTweets).toHaveBeenCalledWith({ tweets: [] });
   });
 
@@ -91,12 +85,9 @@ describe('TwitterService', () => {
       extra: '',
     });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.USER_TWEETS,
-      {
-        params: { userId: '44196397' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.USER_TWEETS, {
+      params: { userId: '44196397' },
+    });
   });
 
   it('getTweetDetails calls the tweet details endpoint', async () => {
@@ -104,12 +95,9 @@ describe('TwitterService', () => {
 
     await service.getTweetDetails({ tweetId: '999' });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.TWEET_DETAILS,
-      {
-        params: { tweetId: '999' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.TWEET_DETAILS, {
+      params: { tweetId: '999' },
+    });
   });
 
   it('search forwards the query and type params', async () => {
@@ -117,7 +105,7 @@ describe('TwitterService', () => {
 
     await service.search({ query: 'nestjs', type: 'Top' });
 
-    expect(httpService.get).toHaveBeenCalledWith(TWITTER_ENDPOINTS.SEARCH, {
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.SEARCH, {
       params: { query: 'nestjs', type: 'Top' },
     });
   });
@@ -130,12 +118,9 @@ describe('TwitterService', () => {
       cursor: 'cursor123',
     });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.COMMUNITY_TWEETS,
-      {
-        params: { communityId: '123', cursor: 'cursor123' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.COMMUNITY_TWEETS, {
+      params: { communityId: '123', cursor: 'cursor123' },
+    });
   });
 
   it('getListTweets calls the list tweets endpoint', async () => {
@@ -143,12 +128,9 @@ describe('TwitterService', () => {
 
     await service.getListTweets({ listId: '456' });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.LIST_TWEETS,
-      {
-        params: { listId: '456' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.LIST_TWEETS, {
+      params: { listId: '456' },
+    });
   });
 
   it('getSpaceById calls the space endpoint', async () => {
@@ -156,12 +138,9 @@ describe('TwitterService', () => {
 
     await service.getSpaceById({ spaceId: 'abc' });
 
-    expect(httpService.get).toHaveBeenCalledWith(
-      TWITTER_ENDPOINTS.SPACE_BY_ID,
-      {
-        params: { spaceId: 'abc' },
-      },
-    );
+    expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.SPACE_BY_ID, {
+      params: { spaceId: 'abc' },
+    });
   });
 
   describe('getSmartFollowers', () => {
@@ -198,12 +177,12 @@ describe('TwitterService', () => {
 
       expect(httpService.get).toHaveBeenNthCalledWith(
         1,
-        TWITTER_ENDPOINTS.USER_BY_USERNAME,
+        X_ENDPOINTS.USER_BY_USERNAME,
         { params: { username: 'elonmusk' } },
       );
       expect(httpService.get).toHaveBeenNthCalledWith(
         2,
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        X_ENDPOINTS.USER_FOLLOWERS,
         { params: { userId: '44196397' } },
       );
       expect(result).toEqual({
@@ -235,10 +214,9 @@ describe('TwitterService', () => {
       await service.getSmartFollowers({ userId: '44196397' });
 
       expect(httpService.get).toHaveBeenCalledTimes(1);
-      expect(httpService.get).toHaveBeenCalledWith(
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
-        { params: { userId: '44196397' } },
-      );
+      expect(httpService.get).toHaveBeenCalledWith(X_ENDPOINTS.USER_FOLLOWERS, {
+        params: { userId: '44196397' },
+      });
     });
 
     it('paginates through multiple pages of followers via pagination.nextCursor and ranks across all of them', async () => {
@@ -270,12 +248,12 @@ describe('TwitterService', () => {
       expect(httpService.get).toHaveBeenCalledTimes(2);
       expect(httpService.get).toHaveBeenNthCalledWith(
         1,
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        X_ENDPOINTS.USER_FOLLOWERS,
         { params: { userId: '44196397' } },
       );
       expect(httpService.get).toHaveBeenNthCalledWith(
         2,
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        X_ENDPOINTS.USER_FOLLOWERS,
         { params: { userId: '44196397', cursor: 'CURSOR_2' } },
       );
       expect(result).toEqual({
@@ -313,7 +291,7 @@ describe('TwitterService', () => {
       expect(httpService.get).toHaveBeenCalledTimes(5);
       expect(httpService.get).toHaveBeenNthCalledWith(
         5,
-        TWITTER_ENDPOINTS.USER_FOLLOWERS,
+        X_ENDPOINTS.USER_FOLLOWERS,
         { params: { userId: '44196397', cursor: 'CURSOR_4' } },
       );
     });
@@ -367,12 +345,12 @@ describe('TwitterService', () => {
       expect(httpService.get).toHaveBeenCalledTimes(2);
       expect(httpService.get).toHaveBeenNthCalledWith(
         1,
-        TWITTER_ENDPOINTS.USER_BY_USERNAME,
+        X_ENDPOINTS.USER_BY_USERNAME,
         { params: { username: 'elonmusk' } },
       );
       expect(httpService.get).toHaveBeenNthCalledWith(
         2,
-        TWITTER_ENDPOINTS.USER_TWEETS,
+        X_ENDPOINTS.USER_TWEETS,
         { params: { userId: '44196397' } },
       );
       expect(storageService.saveTweets).toHaveBeenCalledWith(tweetsResponse);
@@ -434,12 +412,12 @@ describe('TwitterService', () => {
       expect(httpService.get).toHaveBeenCalledTimes(3);
       expect(httpService.get).toHaveBeenNthCalledWith(
         2,
-        TWITTER_ENDPOINTS.USER_TWEETS,
+        X_ENDPOINTS.USER_TWEETS,
         { params: { userId: '44196397' } },
       );
       expect(httpService.get).toHaveBeenNthCalledWith(
         3,
-        TWITTER_ENDPOINTS.USER_TWEETS,
+        X_ENDPOINTS.USER_TWEETS,
         { params: { userId: '44196397', cursor: 'CURSOR_2' } },
       );
       // The 40-day-old tweet on page 2 is past the 7-day refresh cutoff, so
